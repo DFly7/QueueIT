@@ -205,3 +205,77 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Created by https://www.toptal.com/developers/gitignore/api/swift
+# Edit at https://www.toptal.com/developers/gitignore?templates=swift
+
+### Swift ###
+# Xcode
+#
+# gitignore contributors: remember to keep this file compatible with the original Xcode gitignore in PROJECTS/Swift.
+
+## User-specific stuff
+*.DS_Store
+*.xcodeproj/project.xcworkspace
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xccheckout
+
+## Build generated
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM/
+*.[oa]
+
+## Swift Package Manager
+#
+# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
+# Packages/
+#
+# Add this line if you want to avoid checking in resolved dependencies from Swift Package Manager.
+# *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+#
+# We recommend against adding the above two lines to your .gitignore.
+# You should commit your Package.resolved file to ensure that your project builds with the same dependency versions on all machines.
+# It is a good idea to commit your Packages folder to your git repository if you are concerned about dependency availability.
+
+.build/
+Packages/
+SourcePackages/
+
+## Cocoapods
+#
+# We recommend against adding the Pods directory to your .gitignore. However
+# you should judge for yourself, the pros and cons are mentioned at:
+# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
+#
+# Pods/
+
+## Carthage
+#
+# Add this line if you don't want to check in your Carthage packages
+# Carthage/
+
+## Accio
+#
+# We recommend against adding the Dependencies directory to your .gitignore.
+# However, you should judge for yourself, the pros and cons are mentioned at:
+# https://github.com/JamitLabs/Accio#should-i-check-the-dependencies-directory-into-source-control
+#
+# Dependencies/
+
+## Fastlane
+#
+# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
+# screenshots whenever they are needed.
+# For more information about the recommended setup visit:
+# https://docs.fastlane.tools/best-practices/source-control/
+
+fastlane/report.xml
+fastlane/test_output
+fastlane/screenshots
+
+# End of https://www.toptal.com/developers/gitignore/api/swift

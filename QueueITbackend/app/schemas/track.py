@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, HttpUrl
 
 class TrackOut(BaseModel):
     id: str = Field(..., description="Spotify track ID")
+    isrc: str = Field(..., description="International Standard Recording Code")
     name: str = Field(..., description="Track title")
     artists: List[str] = Field(..., description="Primary artist names")
     album: str = Field(..., description="Album name")

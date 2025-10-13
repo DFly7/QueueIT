@@ -1,3 +1,4 @@
+import requests
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,6 +27,7 @@ def parse_spotify_results(spotify_data: dict) -> SearchResults:
         tracks.append(
             TrackOut(
                 id=item.get("id"),
+                isrc=item.get("external_ids", {}).get("isrc"),
                 name=item.get("name"),
                 artists=[artist["name"] for artist in item.get("artists", [])],
                 album=item.get("album", {}).get("name"),
