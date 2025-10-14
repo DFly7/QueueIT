@@ -75,7 +75,7 @@ struct ContentView: View {
                                     Text(track.name)
                                         .font(.title2)
                                         .bold()
-                                    Text(track.artists.joined(separator: ", "))
+                                    Text(track.artists)
                                         .foregroundStyle(.secondary)
                                     Text(track.album)
                                         .foregroundStyle(.secondary)
@@ -101,7 +101,7 @@ struct ContentView: View {
                                         Text(track.name)
                                             .font(.body)
                                             .lineLimit(1)
-                                        Text(track.artists.joined(separator: ", "))
+                                        Text(track.artists)
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -112,14 +112,6 @@ struct ContentView: View {
                         }
                     }
                 }
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -135,22 +127,6 @@ struct ContentView: View {
         }
         detail: {
             Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
         }
     }
 }

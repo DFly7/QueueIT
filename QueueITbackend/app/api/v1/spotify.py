@@ -29,12 +29,10 @@ def parse_spotify_results(spotify_data: dict) -> SearchResults:
                 id=item.get("id"),
                 isrc=item.get("external_ids", {}).get("isrc"),
                 name=item.get("name"),
-                artists=[artist["name"] for artist in item.get("artists", [])],
+                artists=' & '.join([artist["name"] for artist in item.get("artists", [])]),
                 album=item.get("album", {}).get("name"),
                 duration_ms=item.get("duration_ms"),
-                image_url=item.get("album", {}).get("images", [{}])[0].get("url"),
-                preview_url=item.get("preview_url"),
-                external_url=item.get("external_urls", {}).get("spotify"),
+                image_url=item.get("album", {}).get("images", [{}])[0].get("url")
             )
         )
     return SearchResults(tracks=tracks)

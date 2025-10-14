@@ -23,7 +23,7 @@ final class TrackSearchViewModel: ObservableObject {
     init() {
         $query
             .removeDuplicates()
-            .debounce(for: .milliseconds(350), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] newValue in
                 self?.triggerDebouncedSearch(for: newValue)
             }

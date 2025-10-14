@@ -279,3 +279,6 @@ fastlane/test_output
 fastlane/screenshots
 
 # End of https://www.toptal.com/developers/gitignore/api/swift
+
+# User-specific Xcode user interface state
+*.xcuserstate
