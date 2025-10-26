@@ -1,2 +1,1 @@
 *.ipynb filter=nbstripout
-nbdime config-git --enable
