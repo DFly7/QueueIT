@@ -16,6 +16,7 @@ class TrackOut(BaseModel):
         json_schema_extra = {
             "example": {
                 "id": "3n3Ppam7vgaVa1iaRUc9Lp",
+                "isrc": "US-QW-000000000000",
                 "name": "Mr. Brightside",
                 "artists": "The Killers & The Rolling Stones",
                 "album": "Hot Fuss",
