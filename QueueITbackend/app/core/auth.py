@@ -5,6 +5,15 @@ from typing import Optional, Dict
 import jwt
 import requests
 from app.core.config import get_settings
+from supabase import create_client, Client
+from typing import TypedDict, Any
+
+
+
+class AuthData(TypedDict):
+    """Defines the structure of the verified auth data."""
+    token: str
+    payload: Dict[str, Any]
 
 # --- Configuration ---
 settings = get_settings()
@@ -91,8 +100,8 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
             algorithms=["RS256", "ES256"], # Support both algs
             audience="authenticated",      # CRITICAL: Verify audience
         )
-        return decoded
-        
+        return {"token": token, "payload": decoded}   
+
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as e:
@@ -103,3 +112,23 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
     except Exception as e:
         # Catch-all for other errors
         raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
+
+
+# --- FastAPI Dependency: Get User-Specific Supabase Client ---
+def get_supabase_client_as_user(
+    auth_data: AuthData = Depends(verify_jwt)
+) -> Client:
+    """
+    FastAPI dependency that provides a Supabase client
+    authenticated as the user from their JWT.
+    
+    RLS is enforced on all queries made with this client.
+    """
+    supabase = create_client(
+        settings.supabase_url,
+        settings.supabase_public_anon_key 
+    )
+    
+    supabase.postgrest.auth(auth_data["token"])
+    
+    return supabase

@@ -31,8 +31,8 @@ def healthz() -> dict:
 
 app.include_router(
     api_router, 
-    prefix="/api/v1", 
-    dependencies=[Depends(verify_jwt)]
+    prefix="/api/v1"
+    # dependencies=[Depends(verify_jwt)]
     # tags=["Protected"]
 )
 
