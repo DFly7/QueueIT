@@ -18,10 +18,10 @@ def _get_access_token() -> str:
 
     # --- Otherwise, fetch a new one ---
     settings = get_settings()
-    client_id = settings.client_id or os.getenv("CLIENT_ID")
-    client_secret = settings.client_secret or os.getenv("CLIENT_SECRET")
+    client_id = settings.spotify_client_id
+    client_secret = settings.spotify_client_secret
     if not client_id or not client_secret:
-        raise ValueError("Missing CLIENT_ID or CLIENT_SECRET environment variables")
+        raise ValueError("Missing SPOTIFY_CLIENT_ID or SPOTIFY_CLIENT_SECRET environment variables")
 
     auth_str = f"{client_id}:{client_secret}"
     b64_auth_str = base64.b64encode(auth_str.encode()).decode()

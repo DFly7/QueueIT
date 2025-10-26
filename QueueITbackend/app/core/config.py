@@ -14,8 +14,12 @@ class Settings(BaseModel):
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = environment != "production"
 
-    client_id: str | None = os.getenv("CLIENT_ID")
-    client_secret: str | None = os.getenv("CLIENT_SECRET")
+
+    spotify_client_id: str | None = os.getenv("SPOTIFY_CLIENT_ID")
+    spotify_client_secret: str | None = os.getenv("SPOTIFY_CLIENT_SECRET")
+
+    supabase_url: str | None = os.getenv("SUPABASE_URL")
+    supabase_public_anon_key: str | None = os.getenv("SUPABASE_PUBLIC_ANON_KEY")
 
     allowed_origins: List[str] = Field(
         default_factory=lambda: [o for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o]
