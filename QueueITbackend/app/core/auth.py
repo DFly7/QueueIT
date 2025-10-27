@@ -10,6 +10,7 @@ from typing import TypedDict, Any
 
 
 
+
 class AuthData(TypedDict):
     """Defines the structure of the verified auth data."""
     token: str
@@ -124,6 +125,17 @@ def get_supabase_client_as_user(
     
     RLS is enforced on all queries made with this client.
     """
+
+    user_id = auth_data["payload"]["sub"]
+
+    # You can also get other details from the token
+    user_email = auth_data["payload"].get("email")
+    user_role = auth_data["payload"].get("role")
+
+    print(f"User ID: {user_id}")
+    print(f"User Email: {user_email}")
+    print(f"User Role: {user_role}")
+
     supabase = create_client(
         settings.supabase_url,
         settings.supabase_public_anon_key 

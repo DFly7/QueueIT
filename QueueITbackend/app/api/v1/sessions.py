@@ -11,27 +11,74 @@
 # PATCH /sessions/control_session
 # Description: Used by the session host for administrative actions. The request body could specify actions like lock_queue: true, skip_current_track: true, or pause_playback: true. This endpoint centralizes all host controls.
 
-from fastapi import APIRouter
-
+from fastapi import APIRouter, Depends
+from supabase import Client
+from app.core.auth import get_supabase_client_as_user
+from app.schemas.session import SessionJoinRequest, SessionBase, CurrentSessionResponse, SessionCreateRequest
+from fastapi import Body
 router = APIRouter()
 
 
 @router.post("/create")
-def create_session() -> dict:
+def create_session(    
+    supabase: Client = Depends(get_supabase_client_as_user),
+    session_request: SessionCreateRequest = Body(...)
+    ) -> dict:
+
+    print(f"Session Request: {session_request}")
+
+    current_user_id = auth_data["payload"]["sub"]
+    
+    print(f"Authenticated User ID: {current_user_id}")
+
+    try:
+        response = supabase.from_("sessions").insert({
+            "join_code": session_request.join_code,
+            "host_id": current_user_id
+        }).execute()
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"error": str(e)}
+
+
     return {"ok": True}
 
+
+    # return CurrentSessionResponse(
+    #     session=SessionBase(
+    #         id=session.data[0]["id"],
+    #         join_code=session.data[0]["join_code"],
+    #         created_at=session.data[0]["created_at"],
+    #         host=User(
+    #             id=session.data[0]["host_id"],
+    #             username=supabase.auth.get_user().data.user.email
+    #         )
+    #     ),
+    #     current_song=None,
+    #     queue=[]
+    # )
+
 @router.post("/join")
-def join_session() -> dict:
+def join_session(
+    supabase: Client = Depends(get_supabase_client_as_user),
+    join_request: SessionJoinRequest = Body(...)
+    ) -> dict:
     return {"ok": True}
 
 @router.get("/current")
-def get_current_session() -> dict:
+def get_current_session(
+    supabase: Client = Depends(get_supabase_client_as_user)
+    ) -> dict:
     return {"ok": True}
 
 @router.post("/leave")
-def leave_session() -> dict:
+def leave_session(
+    supabase: Client = Depends(get_supabase_client_as_user)
+    ) -> dict:
     return {"ok": True}
 
 @router.patch("/control_session")
-def control_session() -> dict:
+def control_session(
+    supabase: Client = Depends(get_supabase_client_as_user)
+    ) -> dict:
     return {"ok": True}
