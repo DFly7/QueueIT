@@ -16,23 +16,26 @@ from supabase import Client
 from app.core.auth import get_supabase_client_as_user
 from app.schemas.session import SessionJoinRequest, SessionBase, CurrentSessionResponse, SessionCreateRequest
 from fastapi import Body
+from app.core.auth import AuthenticatedClient, get_authenticated_client
 router = APIRouter()
 
 
 @router.post("/create")
 def create_session(    
-    supabase: Client = Depends(get_supabase_client_as_user),
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
     session_request: SessionCreateRequest = Body(...)
     ) -> dict:
 
-    print(f"Session Request: {session_request}")
-
-    current_user_id = auth_data["payload"]["sub"]
+    current_user_id = auth.payload["sub"]
+    supabase_client = auth.client
     
-    print(f"Authenticated User ID: {current_user_id}")
+    print(f"User {current_user_id} is creating a session")
+
+    # response = supabase_client.from_("sessions").select("*").execute()
+    # print(f"Response: {response}")
 
     try:
-        response = supabase.from_("sessions").insert({
+        response = supabase_client.from_("sessions").insert({
             "join_code": session_request.join_code,
             "host_id": current_user_id
         }).execute()

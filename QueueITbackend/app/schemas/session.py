@@ -55,7 +55,7 @@ class SessionJoinRequest(BaseModel):
     """
     Schema for POST /sessions/join
     """
-    join_code: str = Field(..., min_length=4, max_length=10) # Example validation
+    join_code: str = Field(..., min_length=4, max_length=20) # Example validation
 
 
 class SessionControlRequest(BaseModel):

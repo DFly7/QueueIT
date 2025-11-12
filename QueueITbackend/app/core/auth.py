@@ -7,8 +7,15 @@ import requests
 from app.core.config import get_settings
 from supabase import create_client, Client
 from typing import TypedDict, Any
+from pydantic import BaseModel
 
 
+class AuthenticatedClient(BaseModel):
+    client: Client
+    payload: dict  # This is the auth_data["payload"]
+
+    class Config:
+        arbitrary_types_allowed = True # Needed to allow the 'Client' type
 
 
 class AuthData(TypedDict):
@@ -144,3 +151,30 @@ def get_supabase_client_as_user(
     supabase.postgrest.auth(auth_data["token"])
     
     return supabase
+
+
+
+def get_authenticated_client(
+    auth_data: AuthData = Depends(verify_jwt)
+) -> AuthenticatedClient:
+    """
+    FastAPI dependency that provides both the user-authenticated
+    Supabase client and the user's JWT payload.
+    """
+    user_id = auth_data["payload"]["sub"]
+    user_email = auth_data["payload"].get("email")
+    print(f"Authenticated client for user: {user_email} ({user_id})")
+
+    supabase = create_client(
+        settings.supabase_url,
+        settings.supabase_public_anon_key 
+    )
+    
+    # Authenticate the client for RLS
+    supabase.postgrest.auth(auth_data["token"])
+    
+    # Return the client and the payload in one object
+    return AuthenticatedClient(
+        client=supabase, 
+        payload=auth_data["payload"]
+    )
