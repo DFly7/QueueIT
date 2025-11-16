@@ -11,27 +11,68 @@
 # PATCH /sessions/control_session
 # Description: Used by the session host for administrative actions. The request body could specify actions like lock_queue: true, skip_current_track: true, or pause_playback: true. This endpoint centralizes all host controls.
 
-from fastapi import APIRouter
-
+from fastapi import APIRouter, Depends, Body, HTTPException
+from app.core.auth import AuthenticatedClient, get_authenticated_client
+from app.schemas.session import (
+    SessionJoinRequest,
+    CurrentSessionResponse,
+    SessionCreateRequest,
+    SessionControlRequest,
+)
+from app.services.session_service import (
+    create_session_for_user,
+    join_session_by_code,
+    get_current_session_for_user,
+    leave_current_session_for_user,
+    control_session_for_user,
+)
 router = APIRouter()
 
 
-@router.post("/create")
-def create_session() -> dict:
-    return {"ok": True}
+@router.post("/create", response_model=CurrentSessionResponse)
+def create_session(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    session_request: SessionCreateRequest = Body(...),
+):
+    return create_session_for_user(auth, session_request)
 
-@router.post("/join")
-def join_session() -> dict:
-    return {"ok": True}
 
-@router.get("/current")
-def get_current_session() -> dict:
-    return {"ok": True}
+    # return CurrentSessionResponse(
+    #     session=SessionBase(
+    #         id=session.data[0]["id"],
+    #         join_code=session.data[0]["join_code"],
+    #         created_at=session.data[0]["created_at"],
+    #         host=User(
+    #             id=session.data[0]["host_id"],
+    #             username=supabase.auth.get_user().data.user.email
+    #         )
+    #     ),
+    #     current_song=None,
+    #     queue=[]
+    # )
+
+@router.post("/join", response_model=CurrentSessionResponse)
+def join_session(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    join_request: SessionJoinRequest = Body(...),
+):
+    return join_session_by_code(auth, join_request)
+
+@router.get("/current", response_model=CurrentSessionResponse)
+def get_current_session(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    return get_current_session_for_user(auth)
 
 @router.post("/leave")
-def leave_session() -> dict:
-    return {"ok": True}
+def leave_session(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    return leave_current_session_for_user(auth)
 
 @router.patch("/control_session")
-def control_session() -> dict:
-    return {"ok": True}
+def control_session(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    request: SessionControlRequest = Body(...),
+):
+    return control_session_for_user(auth, request)

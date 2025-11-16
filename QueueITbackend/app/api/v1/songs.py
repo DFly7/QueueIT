@@ -9,39 +9,34 @@
 
 
 # app/api/v1/songs.py
-from fastapi import APIRouter, Depends, HTTPException
-from supabase import Client
-from app.core.auth import get_supabase_client_as_user
-# Import your schemas, e.g., from app.schemas.track import Track
+from fastapi import APIRouter, Depends, HTTPException, Body
+from app.core.auth import AuthenticatedClient, get_authenticated_client
+from app.schemas.track import AddSongRequest
+from app.schemas.session import VoteRequest, QueuedSongResponse
+from app.services.queue_service import add_song_to_queue_for_user, vote_for_queued_song
 
 router = APIRouter()
 
 @router.get("/my-songs")
-def get_my_songs(
-    # This dependency gives you the RLS-enabled client
-    supabase: Client = Depends(get_supabase_client_as_user)
-):
+def get_my_songs():
     """
-    Fetches songs for the currently authenticated user.
-    RLS policies are automatically enforced by Supabase.
+    Placeholder; implement if needed to scope songs to user.
     """
-    try:
-        # RLS is enforced here! This will only return songs
-        # that the user's RLS policy allows them to see.
-        response = supabase.from_("songs").select("*").execute()
-        
-        return response.data
-        
-    except Exception as e:
-        # This could catch RLS violations or other DB errors
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-
-@router.post("/add")
-def add_song() -> dict:
     return {"ok": True}
+
+
+
+@router.post("/add", response_model=QueuedSongResponse)
+def add_song(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    request: AddSongRequest = Body(...),
+):
+    return add_song_to_queue_for_user(auth, request)
 
 @router.post("/{queued_song_id}/vote")
-def vote_for_song() -> dict:
-    return {"ok": True}
+def vote_for_song(
+    queued_song_id: str,
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    request: VoteRequest = Body(...),
+):
+    return vote_for_queued_song(auth, queued_song_id, request)
