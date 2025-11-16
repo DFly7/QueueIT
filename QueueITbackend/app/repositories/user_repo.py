@@ -23,17 +23,16 @@ class UserRepository:
         return response.data
 
     def set_current_session(self, *, user_id: str, session_id: Optional[str]) -> Dict[str, Any]:
+        print(f"--- SETTING CURRENT SESSION FOR USER {user_id} TO {session_id} ---")
         response = (
             self.client
             .from_("users")
-            .update({"current_session": session_id})
+            .update({"current_session": session_id}, returning="representation")
             .eq("id", user_id)
-            .select("*")
-            .single()
             .execute()
         )
-        if response.data is None:
+        if not response.data:
             raise ValueError("Failed to set current_session for user")
-        return response.data
+        return response.data[0]
 
 

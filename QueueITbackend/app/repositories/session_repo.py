@@ -18,22 +18,24 @@ class SessionRepository:
         Inserts a new session. 'join_code' must be unique.
         Returns the inserted row.
         """
-        response = (
-            self.client
-            .from_("sessions")
-            .insert(
-                {
-                    "join_code": join_code,
-                    "host_id": host_id,
-                }
+        try:
+            response = (
+                self.client
+                .from_("sessions")
+                .insert(
+                    {
+                        "join_code": join_code,
+                        "host_id": host_id,
+                    },
+                    returning="representation"  # <-- Use this parameter
+                )
+                .execute()
             )
-            .select("*")
-            .single()
-            .execute()
-        )
-        if response.data is None:
-            raise ValueError(f"Failed to create session: {response}")
-        return response.data
+            if response.data is None:
+                raise ValueError(f"Failed to create session: {response}")
+        except Exception as e:
+            raise ValueError(f"Failed to create session: {e}")
+        return response.data[0] # <-- This returns the DICTIONARY
 
     def get_by_join_code(self, join_code: str) -> Optional[Dict[str, Any]]:
         response = (
@@ -61,15 +63,13 @@ class SessionRepository:
         response = (
             self.client
             .from_("sessions")
-            .update({"current_song": queued_song_id})
+            .update({"current_song": queued_song_id}, returning="representation")
             .eq("id", session_id)
-            .select("*")
-            .single()
             .execute()
         )
-        if response.data is None:
+        if not response.data:
             raise ValueError("Failed to update current song for session")
-        return response.data
+        return response.data[0]
 
     # --- Helpers ---
     def get_current_for_user(self, user_id: str) -> Optional[Dict[str, Any]]:

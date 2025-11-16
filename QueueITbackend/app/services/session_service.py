@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional, Dict, Any, List
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 
 from app.core.auth import AuthenticatedClient
 from app.repositories import SessionRepository, UserRepository, QueueRepository, SongRepository
@@ -159,6 +159,12 @@ def control_session_for_user(auth: AuthenticatedClient, request: SessionControlR
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
         raise HTTPException(status_code=404, detail="No active session")
+
+    session_details = session_repo.get_by_id(session_row["id"])
+    if not session_details:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session_details["host_id"] != user_id:
+        raise HTTPException(status_code=403, detail="You are not the host of this session")
 
     if request.skip_current_track:
         session_repo.set_current_song(session_id=session_row["id"], queued_song_id=None)
