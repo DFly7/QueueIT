@@ -282,3 +282,6 @@ fastlane/screenshots
 
 # User-specific Xcode user interface state
 *.xcuserstate
+
+
+QueueITbackend/tests/notebook.ipynb
