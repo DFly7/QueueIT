@@ -11,40 +11,30 @@
 # PATCH /sessions/control_session
 # Description: Used by the session host for administrative actions. The request body could specify actions like lock_queue: true, skip_current_track: true, or pause_playback: true. This endpoint centralizes all host controls.
 
-from fastapi import APIRouter, Depends
-from supabase import Client
-from app.core.auth import get_supabase_client_as_user
-from app.schemas.session import SessionJoinRequest, SessionBase, CurrentSessionResponse, SessionCreateRequest
-from fastapi import Body
+from fastapi import APIRouter, Depends, Body, HTTPException
 from app.core.auth import AuthenticatedClient, get_authenticated_client
+from app.schemas.session import (
+    SessionJoinRequest,
+    CurrentSessionResponse,
+    SessionCreateRequest,
+    SessionControlRequest,
+)
+from app.services.session_service import (
+    create_session_for_user,
+    join_session_by_code,
+    get_current_session_for_user,
+    leave_current_session_for_user,
+    control_session_for_user,
+)
 router = APIRouter()
 
 
-@router.post("/create")
-def create_session(    
+@router.post("/create", response_model=CurrentSessionResponse)
+def create_session(
     auth: AuthenticatedClient = Depends(get_authenticated_client),
-    session_request: SessionCreateRequest = Body(...)
-    ) -> dict:
-
-    current_user_id = auth.payload["sub"]
-    supabase_client = auth.client
-    
-    print(f"User {current_user_id} is creating a session")
-
-    # response = supabase_client.from_("sessions").select("*").execute()
-    # print(f"Response: {response}")
-
-    try:
-        response = supabase_client.from_("sessions").insert({
-            "join_code": session_request.join_code,
-            "host_id": current_user_id
-        }).execute()
-    except Exception as e:
-        print(f"Error: {e}")
-        return {"error": str(e)}
-
-
-    return {"ok": True}
+    session_request: SessionCreateRequest = Body(...),
+):
+    return create_session_for_user(auth, session_request)
 
 
     # return CurrentSessionResponse(
@@ -61,27 +51,28 @@ def create_session(
     #     queue=[]
     # )
 
-@router.post("/join")
+@router.post("/join", response_model=CurrentSessionResponse)
 def join_session(
-    supabase: Client = Depends(get_supabase_client_as_user),
-    join_request: SessionJoinRequest = Body(...)
-    ) -> dict:
-    return {"ok": True}
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    join_request: SessionJoinRequest = Body(...),
+):
+    return join_session_by_code(auth, join_request)
 
-@router.get("/current")
+@router.get("/current", response_model=CurrentSessionResponse)
 def get_current_session(
-    supabase: Client = Depends(get_supabase_client_as_user)
-    ) -> dict:
-    return {"ok": True}
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    return get_current_session_for_user(auth)
 
 @router.post("/leave")
 def leave_session(
-    supabase: Client = Depends(get_supabase_client_as_user)
-    ) -> dict:
-    return {"ok": True}
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    return leave_current_session_for_user(auth)
 
 @router.patch("/control_session")
 def control_session(
-    supabase: Client = Depends(get_supabase_client_as_user)
-    ) -> dict:
-    return {"ok": True}
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+    request: SessionControlRequest = Body(...),
+):
+    return control_session_for_user(auth, request)
