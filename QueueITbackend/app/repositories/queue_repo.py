@@ -33,15 +33,14 @@ class QueueRepository:
                     "added_by_id": added_by_id,
                     "status": status,
                     "song_spotify_id": song_spotify_id,
-                }
+                },
+                returning="representation"
             )
-            .select("*")
-            .single()
             .execute()
         )
         if response.data is None:
             raise ValueError("Failed to insert queued song")
-        return response.data
+        return response.data[0] # <-- This returns the DICTIONARY   
 
     def get_queued_song(self, queued_song_id: str) -> Optional[Dict[str, Any]]:
         response = (
@@ -104,46 +103,29 @@ class QueueRepository:
     # --- Voting ---
     def vote_on_song(self, *, queued_song_id: str, user_id: str, vote_value: int) -> Dict[str, Any]:
         """
-        Casts or changes a user's vote for a queued song.
+        Casts or changes a user's vote for a queued song using a single upsert.
         Returns the updated vote row and the new aggregate sum for that queued song.
         """
-        existing = (
+        
+        # This one call handles both creating a new vote and updating an old one.
+        vote_resp = (
             self.client
             .from_("votes")
-            .select("*")
-            .eq("queued_song_id", queued_song_id)
-            .eq("user_id", user_id)
-            .maybe_single()
+            .upsert(
+                {
+                    "queued_song_id": queued_song_id,
+                    "user_id": user_id,
+                    "vote_value": vote_value,
+                },
+                on_conflict="queued_song_id, user_id",  # <-- IMPORTANT: See step 2
+                returning="representation"
+            )
             .execute()
-        ).data
+        )
 
-        if existing:
-            vote_resp = (
-                self.client
-                .from_("votes")
-                .update({"vote_value": vote_value})
-                .eq("id", existing["id"])
-                .select("*")
-                .single()
-                .execute()
-            )
-        else:
-            vote_resp = (
-                self.client
-                .from_("votes")
-                .insert(
-                    {
-                        "queued_song_id": queued_song_id,
-                        "user_id": user_id,
-                        "vote_value": vote_value,
-                    }
-                )
-                .select("*")
-                .single()
-                .execute()
-            )
+        # Check for RLS errors or other failures
         if vote_resp.data is None:
-            raise ValueError("Failed to upsert vote")
+            raise ValueError(f"Failed to upsert vote. RLS may have blocked the request. Error: {vote_resp.error}")
 
         # Compute new total
         total = self._fetch_votes_sum_map({queued_song_id}).get(queued_song_id, 0)

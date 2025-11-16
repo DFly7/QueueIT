@@ -52,9 +52,8 @@ class SongRepository:
                 },
                 on_conflict="spotify_id",
                 ignore_duplicates=False,
+                returning="representation" 
             )
-            .select("*")
-            .single()
             .execute()
         )
         if response.data is None:

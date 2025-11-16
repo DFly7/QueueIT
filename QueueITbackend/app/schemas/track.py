@@ -1,15 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, Annotated
 
 from pydantic import BaseModel, Field, HttpUrl
 
 
 class TrackOut(BaseModel):
-    id: str = Field(..., alias="spotify_id", description="Spotify track ID")
-    isrc: str = Field(..., alias="isrc_identifier", description="International Standard Recording Code")
+    id: Annotated[str, Field(..., alias="spotify_id", description="Spotify track ID")]
+    isrc: Annotated[str, Field(..., alias="isrc_identifier", description="International Standard Recording Code")]
     name: str = Field(..., description="Track title")
-    artists: str = Field(..., alias="artist", description="Primary artists names in a & separated list")
+    artists: Annotated[str, Field(..., alias="artist", description="Primary artists names in a & separated list")]
     album: str = Field(..., description="Album name")
-    duration_ms: int = Field(..., alias="durationMSs", ge=0, description="Duration in milliseconds")
+    duration_ms: Annotated[int, Field(..., alias="durationMSs", ge=0, description="Duration in milliseconds")]
     image_url: Optional[HttpUrl] = Field(None, description="Album art URL (largest available)")
 
     class Config:
@@ -29,12 +29,13 @@ class TrackOut(BaseModel):
         }
 
 class AddSongRequest(BaseModel):
-    id: str = Field(..., alias="spotify_id", description="Spotify track ID")
-    isrc: str = Field(..., alias="isrc_identifier", description="International Standard Recording Code")
-    name: str = Field(..., description="Track title")
-    artists: str = Field(..., alias="artist", description="Primary artists names in a & separated list")
+    # This is the new, correct syntax
+    id: Annotated[str, Field(alias="spotify_id", description="Spotify track ID")]
+    isrc: Annotated[str, Field(alias="isrc_identifier", description="International Standard Recording Code")]
+    name: str = Field(..., description="Track title") # No alias, so 'Annotated' is not needed
+    artists: Annotated[str, Field(alias="artist", description="Primary artists names in a & separated list")]
     album: str = Field(..., description="Album name")
-    duration_ms: int = Field(..., alias="durationMSs", ge=0, description="Duration in milliseconds")
+    duration_ms: Annotated[int, Field(alias="durationMSs", ge=0, description="Duration in milliseconds")]
     image_url: HttpUrl = Field(..., description="Album art URL (largest available)")
 
     class Config:
@@ -50,4 +51,3 @@ class AddSongRequest(BaseModel):
                 "image_url": "https://i.scdn.co/image/ab67616d0000b273..."
             }
         }
-
