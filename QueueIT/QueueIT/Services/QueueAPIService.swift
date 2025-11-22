@@ -57,8 +57,41 @@ class QueueAPIService {
         }
         
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(T.self, from: data)
+        // Use a custom date decoder that handles fractional seconds
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // Try multiple ISO8601 formatters to handle different fractional second precisions
+            let formatters: [ISO8601DateFormatter] = [
+                {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    return formatter
+                }(),
+                {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime]
+                    return formatter
+                }()
+            ]
+            
+            for formatter in formatters {
+                if let date = formatter.date(from: dateString) {
+                    return date
+                }
+            }
+            
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string: \(dateString)")
+        }
+        
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            // Log decoding errors for debugging
+            print("❌ Failed to decode \(T.self): \(error)")
+            throw error
+        }
     }
     
     // MARK: - Sessions API
@@ -154,6 +187,9 @@ class QueueAPIService {
         // Add auth header if available (search might be protected)
         if let token = await authService.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        else{
+            print( "!!!!! No token found")
         }
         
         return try await performRequest(request, responseType: SearchResults.self)

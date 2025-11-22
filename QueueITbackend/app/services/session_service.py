@@ -89,7 +89,6 @@ def get_current_session_for_user(auth: AuthenticatedClient) -> CurrentSessionRes
 
 
 def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateRequest) -> CurrentSessionResponse:
-    print(f"[DEBUG] Creating session for user: {auth.payload}")
     client = auth.client
     user_id = auth.payload["sub"]
 

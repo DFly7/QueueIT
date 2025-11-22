@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		90923F952ED1CE3D00BE8A55 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 90923F942ED1CE3D00BE8A55 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		90CBEDBA2E9BD7E000CCCC72 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90923F952ED1CE3D00BE8A55 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = QueueIT;
 			packageProductDependencies = (
+				90923F942ED1CE3D00BE8A55 /* Supabase */,
 			);
 			productName = QueueIT;
 			productReference = 90CBEDAA2E9BD7DE00CCCC72 /* QueueIT.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 90CBEDA12E9BD7DE00CCCC72;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 90CBEDAB2E9BD7DE00CCCC72 /* Products */;
 			projectDirPath = "";
@@ -560,6 +569,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		90923F942ED1CE3D00BE8A55 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 90CBEDA22E9BD7DE00CCCC72 /* Project object */;
 }
