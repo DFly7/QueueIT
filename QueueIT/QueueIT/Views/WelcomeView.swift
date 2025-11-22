@@ -87,6 +87,14 @@ struct WelcomeView: View {
                     }
                     .padding(.bottom, 32)
                 }
+                else {
+                    Button("Sign Out") {
+                        authService.signOut()
+                    }
+                    .font(AppTheme.caption())
+                    .foregroundColor(AppTheme.accent)
+                    .padding(.top, 4)
+                }
             }
         }
         .sheet(isPresented: $showingCreateSession) {

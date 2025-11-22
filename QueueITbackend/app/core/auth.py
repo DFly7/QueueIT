@@ -88,6 +88,7 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
     Verifies Supabase JWT using the JWKSManager.
     This is the dependency that will be used in your routers.
     """
+    print(f"[DEBUG] Verifying JWT: {authorization}")
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
