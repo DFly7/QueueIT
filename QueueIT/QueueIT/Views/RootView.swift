@@ -66,10 +66,10 @@ struct RootView: View {
 
 #Preview {
     RootView()
-        .environmentObject(AuthService(supabaseURL: URL(string: "https://example.supabase.co")!, supabaseAnonKey: "key"))
+        .environmentObject(AuthService.mock)
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
+            authService: AuthService.mock
         )))
 }
 

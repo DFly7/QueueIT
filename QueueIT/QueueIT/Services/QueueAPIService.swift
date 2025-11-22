@@ -2,7 +2,7 @@
 //  QueueAPIService.swift
 //  QueueIT
 //
-//  API client for all backend endpoints
+//  API client for all backend endpoints (sessions, queue, songs, voting)
 //
 
 import Foundation

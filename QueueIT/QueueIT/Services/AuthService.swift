@@ -200,7 +200,7 @@ class AuthService: ObservableObject {
 // MARK: - Preview Mock
 extension AuthService {
     static var mock: AuthService {
-        let service = AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
+        let service = AuthService(supabaseURL: URL(string: "https://example.com")!, supabaseAnonKey: "")
         
         // Manually set the state for the preview
         service.isAuthenticated = true
