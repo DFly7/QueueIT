@@ -109,12 +109,9 @@ struct WelcomeView: View {
 }
 
 #Preview {
+    // This works because we are just calling .mock()
+    // The function internals handle the @MainActor logic safely
     WelcomeView()
-        .environmentObject(AuthService(supabaseURL: "https://example.supabase.co", supabaseAnonKey: "key"))
-        .environmentObject(SessionCoordinator(apiService: QueueAPIService(
-            baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: "", supabaseAnonKey: "")
-        )))
+        .environmentObject(AuthService.mock)
+        .environmentObject(SessionCoordinator.mock())
 }
-
-

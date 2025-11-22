@@ -2,13 +2,14 @@
 //  QueueAPIService.swift
 //  QueueIT
 //
-//  API client for all backend endpoints (sessions, queue, songs, voting)
+//  API client for all backend endpoints
 //
 
 import Foundation
 
 class QueueAPIService {
     private let baseURL: URL
+    // 1. AuthService is an Actor, so we must be careful how we access it
     public let authService: AuthService
     
     init(baseURL: URL, authService: AuthService) {
@@ -18,20 +19,24 @@ class QueueAPIService {
     
     // MARK: - Helper Methods
     
-    @MainActor private func createRequest(
+    // 2. Removed @MainActor, added 'async'.
+    // This allows us to 'await' the token from AuthService without freezing the UI.
+    private func createRequest(
         path: String,
         method: String,
         body: Encodable? = nil
-    ) throws -> URLRequest {
+    ) async throws -> URLRequest {
         let url = baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        // Add Bearer token if authenticated
-        if let token = authService.accessToken {
+        // 3. We await the accessToken because AuthService is on the MainActor
+        if let token = await authService.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            print("⚠️ Warning: Making request to \(path) without a token")
         }
         
         if let body = body {
@@ -51,52 +56,49 @@ class QueueAPIService {
             throw APIError.invalidResponse
         }
         
+        // 4. Handle 401 Unauthorized specifically
+        if http.statusCode == 401 {
+            // Optional: Trigger a sign out if the token is invalid
+            await authService.signOut()
+            throw APIError.unauthorized
+        }
+        
         guard 200..<300 ~= http.statusCode else {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw APIError.serverError(statusCode: http.statusCode, message: errorMessage)
         }
         
         let decoder = JSONDecoder()
-        // Use a custom date decoder that handles fractional seconds
+        
+        // Date decoding strategy... (kept your existing logic)
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            
-            // Try multiple ISO8601 formatters to handle different fractional second precisions
             let formatters: [ISO8601DateFormatter] = [
                 {
-                    let formatter = ISO8601DateFormatter()
-                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                    return formatter
+                    let f = ISO8601DateFormatter()
+                    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    return f
                 }(),
                 {
-                    let formatter = ISO8601DateFormatter()
-                    formatter.formatOptions = [.withInternetDateTime]
-                    return formatter
+                    let f = ISO8601DateFormatter()
+                    f.formatOptions = [.withInternetDateTime]
+                    return f
                 }()
             ]
-            
             for formatter in formatters {
-                if let date = formatter.date(from: dateString) {
-                    return date
-                }
+                if let date = formatter.date(from: dateString) { return date }
             }
-            
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date string: \(dateString)")
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date")
         }
         
-        do {
-            return try decoder.decode(T.self, from: data)
-        } catch {
-            // Log decoding errors for debugging
-            print("❌ Failed to decode \(T.self): \(error)")
-            throw error
-        }
+        return try decoder.decode(T.self, from: data)
     }
     
     // MARK: - Sessions API
     
     func createSession(joinCode: String) async throws -> CurrentSessionResponse {
+        // 5. 'await' is now required here because createRequest is async
         let request = try await createRequest(
             path: "/api/v1/sessions/create",
             method: "POST",
@@ -176,27 +178,22 @@ class QueueAPIService {
             URLQueryItem(name: "limit", value: "\(limit)")
         ]
         
-        guard let url = urlComponents.url else {
-            throw APIError.invalidURL
-        }
+        guard let url = urlComponents.url else { throw APIError.invalidURL }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        // Add auth header if available (search might be protected)
+        // 6. Updated Auth Check
         if let token = await authService.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        else{
-            print( "!!!!! No token found")
+        } else {
+            print("⚠️ Search performed without auth token")
         }
         
         return try await performRequest(request, responseType: SearchResults.self)
     }
 }
-
-// MARK: - API Errors
 
 enum APIError: Error, LocalizedError {
     case invalidURL
@@ -207,18 +204,11 @@ enum APIError: Error, LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .invalidURL:
-            return "Invalid URL"
-        case .invalidResponse:
-            return "Invalid server response"
-        case .serverError(let statusCode, let message):
-            return "Server error (\(statusCode)): \(message)"
-        case .decodingError:
-            return "Failed to decode response"
-        case .unauthorized:
-            return "Unauthorized. Please sign in again."
+        case .invalidURL: return "Invalid URL"
+        case .invalidResponse: return "Invalid server response"
+        case .serverError(let statusCode, let message): return "Server error (\(statusCode)): \(message)"
+        case .decodingError: return "Failed to decode response"
+        case .unauthorized: return "Unauthorized. Please sign in again."
         }
     }
 }
-
-

@@ -23,7 +23,7 @@ struct RootView: View {
             }
         }
         .sheet(isPresented: $showingAuth) {
-            SimpleAuthView()
+            AuthView()
                 .environmentObject(authService)
         }
     }
@@ -66,10 +66,10 @@ struct RootView: View {
 
 #Preview {
     RootView()
-        .environmentObject(AuthService(supabaseURL: "https://example.supabase.co", supabaseAnonKey: "key"))
+        .environmentObject(AuthService(supabaseURL: URL(string: "https://example.supabase.co")!, supabaseAnonKey: "key"))
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: "", supabaseAnonKey: "")
+            authService: AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
         )))
 }
 

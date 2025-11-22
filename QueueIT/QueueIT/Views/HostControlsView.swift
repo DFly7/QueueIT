@@ -148,8 +148,8 @@ struct HostControlsView: View {
     HostControlsView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: "", supabaseAnonKey: "")
-        )))
+            authService: AuthService.mock)
+        ));
 }
 
 

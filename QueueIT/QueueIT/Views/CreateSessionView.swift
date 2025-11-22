@@ -122,9 +122,9 @@ struct CreateSessionView: View {
 #Preview {
     CreateSessionView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
-            baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: "", supabaseAnonKey: "")
-        )))
+                    baseURL: URL(string: "http://localhost:8000")!,
+                    authService: AuthService.mock // Use the mock!
+                )))
 }
 
 

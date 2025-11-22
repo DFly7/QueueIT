@@ -176,3 +176,20 @@ class SessionCoordinator: ObservableObject {
     }
 }
 
+
+extension SessionCoordinator {
+    @MainActor
+    // 1. Change default to nil
+    static func mock(auth: AuthService? = nil) -> SessionCoordinator {
+        
+        // 2. Unwrap or use .mock inside the function body
+        // This is safe because the function body is @MainActor
+        let actualAuth = auth ?? AuthService.mock
+        
+        let api = QueueAPIService(
+            baseURL: URL(string: "http://localhost:8000")!,
+            authService: actualAuth
+        )
+        return SessionCoordinator(apiService: api)
+    }
+}
