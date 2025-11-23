@@ -10,15 +10,12 @@ import SwiftUI
 struct SearchAndAddView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @Environment(\.dismiss) var dismiss
-    @StateObject private var searchVM: TrackSearchViewModel
+    // Initialize it here!
+    @StateObject private var searchVM = TrackSearchViewModel()
     
     @State private var justAddedTrackId: String?
     @State private var showSuccessAnimation = false
     
-    init() {
-        // Initialize with proper API service
-        _searchVM = StateObject(wrappedValue: TrackSearchViewModel())
-    }
     
     var body: some View {
         NavigationView {
@@ -75,6 +72,9 @@ struct SearchAndAddView: View {
                     }
                     .foregroundColor(AppTheme.accent)
                 }
+            }
+            .onAppear{
+                searchVM.setup(service: sessionCoordinator.apiService)
             }
         }
     }
@@ -277,11 +277,9 @@ struct SearchResultCard: View {
 }
 
 #Preview {
+    // SessionCoordinator.mock() handles creating the API and Auth services internally
     SearchAndAddView()
-        .environmentObject(SessionCoordinator(apiService: QueueAPIService(
-            baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
-        )))
+        .environmentObject(SessionCoordinator.mock())
 }
 
 

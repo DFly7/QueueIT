@@ -14,7 +14,7 @@ class SessionCoordinator: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: String?
     
-    private let apiService: QueueAPIService
+    public let apiService: QueueAPIService
     private var webSocketService: WebSocketService?
     private var cancellables = Set<AnyCancellable>()
     
@@ -116,7 +116,7 @@ class SessionCoordinator: ObservableObject {
     private func disconnectWebSocket() {
         webSocketService?.disconnect()
     }
-    
+
     // MARK: - Queue Management
     
     func addSong(track: Track) async {

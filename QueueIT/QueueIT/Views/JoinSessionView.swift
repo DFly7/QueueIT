@@ -136,7 +136,7 @@ struct JoinSessionView: View {
     JoinSessionView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
+            authService: AuthService.mock
         )))
 }
 

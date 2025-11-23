@@ -24,15 +24,30 @@ class QueueAPIService {
     private func createRequest(
         path: String,
         method: String,
-        body: Encodable? = nil
+        body: Encodable? = nil,
+        queryItems: [URLQueryItem]? = nil // <--- Add this parameter
     ) async throws -> URLRequest {
-        let url = baseURL.appendingPathComponent(path)
+        
+        // 1. Construct URL with Query Parameters
+        let fullURL = baseURL.appendingPathComponent(path)
+        var components = URLComponents(url: fullURL, resolvingAgainstBaseURL: true)!
+        
+        if let queryItems = queryItems {
+            components.queryItems = queryItems
+        }
+        
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        // 2. Create Request
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        // 3. We await the accessToken because AuthService is on the MainActor
+        // 3. AUTOMATIC AUTH INJECTION
+        // This now handles Auth for EVERYTHING (Sessions, Songs, and Search)
         if let token = await authService.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         } else {
@@ -172,24 +187,18 @@ class QueueAPIService {
     // MARK: - Spotify Search
     
     func searchTracks(query: String, limit: Int = 10) async throws -> SearchResults {
-        var urlComponents = URLComponents(url: baseURL.appendingPathComponent("/api/v1/spotify/search"), resolvingAgainstBaseURL: false)!
-        urlComponents.queryItems = [
+        // Define the query parameters here
+        let queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "limit", value: "\(limit)")
         ]
         
-        guard let url = urlComponents.url else { throw APIError.invalidURL }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        
-        // 6. Updated Auth Check
-        if let token = await authService.accessToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        } else {
-            print("⚠️ Search performed without auth token")
-        }
+        // Let createRequest handle the URL construction and Auth Header
+        let request = try await createRequest(
+            path: "/api/v1/spotify/search",
+            method: "GET",
+            queryItems: queryItems
+        )
         
         return try await performRequest(request, responseType: SearchResults.self)
     }
