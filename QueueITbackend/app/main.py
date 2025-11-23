@@ -3,10 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-
 from app.core.auth import verify_jwt
+from app.logging_config import configure_logging
+from app.middleware.request_id import RequestIDMiddleware
+from app.middleware.access_log import AccessLogMiddleware
+from app.exception_handlers import add_exception_handlers
+import structlog
 
 settings = get_settings()
+
+# 1. Configure Logging
+configure_logging()
+logger = structlog.get_logger("api.main")
 
 app = FastAPI(
     title=settings.app_name,
@@ -15,6 +23,7 @@ app = FastAPI(
 
 cors_origins = ["*"] if settings.allowed_origins == ["*"] else settings.allowed_origins
 
+# 2. Middlewares (Last added runs first)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
@@ -23,6 +32,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(AccessLogMiddleware)
+
+# 3. Exception Handlers
+add_exception_handlers(app)
 
 @app.get("/healthz")
 def healthz() -> dict:
@@ -40,7 +54,7 @@ app.include_router(
 @app.on_event("startup")
 def on_startup() -> None:
     # Print relative docs paths; runner prints absolute URL
-    print("FastAPI app started. Docs: /docs | Redoc: /redoc | Health: /healthz")
+    logger.info("app_started", docs_url="/docs", redoc_url="/redoc", health_url="/healthz")
 
 # --- Custom OpenAPI Schema (adds global BearerAuth once) ---
 from fastapi.openapi.utils import get_openapi

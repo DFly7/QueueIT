@@ -1,8 +1,8 @@
 # QueueUp Shipping Plan (MVP to App Store)
 
-**Last Updated:** November 22, 2025  
-**Status:** 🔴 CODE COMPLETE BUT NOT PRODUCTION READY  
-**Est. Time to Launch:** 10-14 days (after critical fixes)
+**Last Updated:** November 23, 2025  
+**Status:** 🟡 IN PROGRESS (Logging Implementation)  
+**Est. Time to Launch:** 10-14 days
 
 ---
 
@@ -14,8 +14,9 @@
 4. [Current Status](#current-status)
 5. [Revised Timeline](#revised-timeline)
 6. [Updated Action Plan](#updated-action-plan)
-7. [App Store Checklist](#app-store-checklist)
-8. [Definition of Done](#definition-of-done)
+7. [Logging Implementation](#logging-implementation)
+8. [App Store Checklist](#app-store-checklist)
+9. [Definition of Done](#definition-of-done)
 
 ---
 
@@ -38,7 +39,7 @@ Ship a social, shared music queue where groups create/join sessions, search song
 - Architecture: ✅ Excellent
 - Implementation: ⚠️ Incomplete
 - Security: ❌ RLS not enforced
-- Critical Missing: WebSocket support
+- Critical Missing: WebSocket support, Structured Logging
 
 **Frontend:** ⚠️ FUNCTIONAL BUT NOT PRODUCTION READY  
 - Architecture: ✅ Excellent
@@ -238,7 +239,7 @@ ENVIRONMENT=development
 - ENV.example file
 - Database ENUM type
 - Rate limiting
-- Structured logging
+- Structured logging (In Progress)
 - Health checks for dependencies
 
 **⚠️ Needs Work:**
@@ -375,7 +376,7 @@ The original plan underestimated:
 
 **Morning (4 hours):**
 - [ ] Create Environment config system (dev/staging/prod)
-- [ ] Remove all hardcoded localhost URLs
+- [ ] Remove hardcoded localhost URLs
 - [ ] Add build configurations
 - [ ] Test backend WebSocket with iOS
 
@@ -409,16 +410,21 @@ The original plan underestimated:
 
 ### 🚀 Week 2: Production Readiness (5 days)
 
-#### Day 6: Backend Production Prep
+#### Day 6: Backend Production Prep (Logging & Robustness)
 
 **Tasks:**
-- [ ] Add structured logging (JSON logs)
+- [x] `logging:setup` — 1 day — create logging_config, set env vars — **Critical**
+- [x] `logging:request-id` — 0.5 day — middleware + tests — **Critical**
+- [x] `logging:access` — 0.5 day — access logs + tests — **Critical**
+- [x] `logging:exceptions` — 0.5 day — exception handler + Sentry — **Critical**
+- [x] `logging:db` — 1 day — slow-query logging & sanitize — **High**
+- [x] `logging:background` — 0.5 day — background context propagation — **High**
+- [x] `docs/tests/ci` — 1 day — docs + tests + CI workflow — **High**
 - [ ] Implement rate limiting (20 req/min per endpoint)
 - [ ] Add health check with dependency validation
 - [ ] Improve error handling (duplicate codes, validation)
-- [ ] Add request IDs for tracing
 
-**Success Criteria:** Backend ready for production deployment
+**Success Criteria:** Backend ready for production deployment, observing structured logs.
 
 ---
 
@@ -478,6 +484,26 @@ The original plan underestimated:
 - [ ] Prepare App Store submission
 
 **Success Criteria:** App functional on TestFlight with production backend
+
+---
+
+## Logging Implementation
+
+### Rollout Plan
+1. **Feature Flag:** Deploy with `LOG_JSON=false` (dev text mode) initially if needed, then switch to `LOG_JSON=true` in staging/prod.
+2. **Staging:** Deploy to staging environment. Verify `X-Request-ID` propagates in headers and logs.
+3. **Production:** Promote to production. Monitor log volume.
+
+### Post-Deploy Checklist
+- [ ] **Monitor:** Check log aggregator (e.g., Datadog/CloudWatch) for log spikes.
+- [ ] **Verify:** Ensure `request_id` is present in 100% of application logs.
+- [ ] **Noise:** Check for spammy debug logs; adjust `LOG_LEVEL` env var if necessary.
+- [ ] **Errors:** Verify exceptions show stack traces in structured format.
+- [ ] **Sentry:** Confirm errors are appearing in Sentry (if configured) with matching request IDs.
+
+### Rollback Plan
+- **Configuration Revert:** Set `LOG_JSON=false` or revert `LOG_LEVEL` to `INFO` if verbose.
+- **Code Revert:** Revert the PR if application fails to start or critical performance regression is observed.
 
 ---
 
@@ -725,6 +751,6 @@ The original plan underestimated:
 
 ---
 
-**Plan Last Updated:** November 22, 2025  
+**Plan Last Updated:** November 23, 2025  
 **Next Review:** After Week 1 completion  
-**Status:** 🔴 Action Required - Begin Week 1 Critical Fixes Immediately
+**Status:** 🟡 Action Required - Begin Week 1 Critical Fixes Immediately

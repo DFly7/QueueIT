@@ -13,7 +13,10 @@ class Settings(BaseModel):
     app_name: str = "QueueIT API"
     environment: str = os.getenv("ENVIRONMENT", "development")
     debug: bool = environment != "production"
-
+    
+    # Logging
+    log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_json: bool = os.getenv("LOG_JSON", "false").lower() == "true"
 
     spotify_client_id: str | None = os.getenv("SPOTIFY_CLIENT_ID")
     spotify_client_secret: str | None = os.getenv("SPOTIFY_CLIENT_SECRET")
@@ -29,5 +32,3 @@ class Settings(BaseModel):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
-

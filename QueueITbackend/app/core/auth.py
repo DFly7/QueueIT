@@ -1,6 +1,7 @@
 # app/core/auth.py
 
-from fastapi import Header, HTTPException, Depends
+import structlog
+from fastapi import Header, HTTPException, Depends, Request
 from typing import Optional, Dict
 import jwt
 import requests
@@ -83,12 +84,12 @@ class JWKSManager:
 jwk_manager = JWKSManager(JWK_URL)
 
 # --- FastAPI Dependency ---
-def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
+def verify_jwt(request: Request, authorization: Optional[str] = Header(None)) -> Dict:
     """
     Verifies Supabase JWT using the JWKSManager.
     This is the dependency that will be used in your routers.
     """
-    print(f"[DEBUG] Verifying JWT: {authorization}")
+    # print(f"[DEBUG] Verifying JWT: {authorization}") # Removed noisy print
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
@@ -109,6 +110,13 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
             algorithms=["RS256", "ES256"], # Support both algs
             audience="authenticated",      # CRITICAL: Verify audience
         )
+        
+        # Inject user_id into request state and logging context
+        user_id = decoded.get("sub")
+        if user_id:
+            request.state.user_id = user_id
+            structlog.contextvars.bind_contextvars(user_id=user_id)
+            
         return {"token": token, "payload": decoded}   
 
     except jwt.ExpiredSignatureError:
@@ -125,6 +133,7 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
 
 # --- FastAPI Dependency: Get User-Specific Supabase Client ---
 def get_supabase_client_as_user(
+    request: Request,
     auth_data: AuthData = Depends(verify_jwt)
 ) -> Client:
     """
@@ -140,9 +149,9 @@ def get_supabase_client_as_user(
     user_email = auth_data["payload"].get("email")
     user_role = auth_data["payload"].get("role")
 
-    print(f"User ID: {user_id}")
-    print(f"User Email: {user_email}")
-    print(f"User Role: {user_role}")
+    # print(f"User ID: {user_id}")
+    # print(f"User Email: {user_email}")
+    # print(f"User Role: {user_role}")
 
     supabase = create_client(
         settings.supabase_url,
@@ -151,11 +160,17 @@ def get_supabase_client_as_user(
     
     supabase.postgrest.auth(auth_data["token"])
     
+    # Propagate X-Request-ID to Supabase
+    request_id = getattr(request.state, "request_id", None)
+    if request_id:
+        supabase.postgrest.headers["X-Request-ID"] = request_id
+    
     return supabase
 
 
 
 def get_authenticated_client(
+    request: Request,
     auth_data: AuthData = Depends(verify_jwt)
 ) -> AuthenticatedClient:
     """
@@ -164,7 +179,7 @@ def get_authenticated_client(
     """
     user_id = auth_data["payload"]["sub"]
     user_email = auth_data["payload"].get("email")
-    print(f"Authenticated client for user: {user_email} ({user_id})")
+    # print(f"Authenticated client for user: {user_email} ({user_id})")
 
     supabase = create_client(
         settings.supabase_url,
@@ -173,6 +188,11 @@ def get_authenticated_client(
     
     # Authenticate the client for RLS
     supabase.postgrest.auth(auth_data["token"])
+    
+    # Propagate X-Request-ID to Supabase
+    request_id = getattr(request.state, "request_id", None)
+    if request_id:
+        supabase.postgrest.headers["X-Request-ID"] = request_id
     
     # Return the client and the payload in one object
     return AuthenticatedClient(
