@@ -1,5 +1,5 @@
 # app/schemas/session.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from typing import Optional, List, Literal
 import uuid
 import datetime
@@ -32,8 +32,15 @@ class QueuedSongResponse(BaseModel):
     song: TrackOut 
     added_by: User 
 
-    class Config:
-        from_attributes = True
+    @field_serializer('added_at')
+    def serialize_datetime(self, dt: datetime.datetime, _info):
+        """Ensure datetime always has timezone info for iOS compatibility"""
+        if dt.tzinfo is None:
+            # If naive, assume UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.isoformat()
+
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Session Schemas ---
 
@@ -77,8 +84,15 @@ class SessionBase(BaseModel):
     created_at: datetime.datetime
     host: User  # Nested host data
 
-    class Config:
-        from_attributes = True
+    @field_serializer('created_at')
+    def serialize_datetime(self, dt: datetime.datetime, _info):
+        """Ensure datetime always has timezone info for iOS compatibility"""
+        if dt.tzinfo is None:
+            # If naive, assume UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.isoformat()
+
+    model_config = ConfigDict(from_attributes=True)
 
 class CurrentSessionResponse(BaseModel):
     """

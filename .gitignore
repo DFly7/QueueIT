@@ -221,6 +221,10 @@ __marimo__/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xccheckout
+*.xcworkspace/
+xcuserdata/
+
+QueueIT.xcodeproj/project.xcworkspace/
 
 ## Build generated
 build/
@@ -236,7 +240,9 @@ DerivedData/
 # Packages/
 #
 # Add this line if you want to avoid checking in resolved dependencies from Swift Package Manager.
-# *.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+QueueIT.xcodeproj/project.xcworkspace/xcshareddata/
+
 #
 # We recommend against adding the above two lines to your .gitignore.
 # You should commit your Package.resolved file to ensure that your project builds with the same dependency versions on all machines.

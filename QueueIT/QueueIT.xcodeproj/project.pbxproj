@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		90923F952ED1CE3D00BE8A55 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 90923F942ED1CE3D00BE8A55 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		90CBEDBA2E9BD7E000CCCC72 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +33,22 @@
 		90CBEDC32E9BD7E000CCCC72 /* QueueITUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QueueITUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		90923F972ED1FC5E00BE8A55 /* Exceptions for "QueueIT" folder in "QueueIT" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 90CBEDA92E9BD7DE00CCCC72 /* QueueIT */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		90CBEDAC2E9BD7DE00CCCC72 /* QueueIT */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				90923F972ED1FC5E00BE8A55 /* Exceptions for "QueueIT" folder in "QueueIT" target */,
+			);
 			path = QueueIT;
 			sourceTree = "<group>";
 		};
@@ -52,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90923F952ED1CE3D00BE8A55 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +130,7 @@
 			);
 			name = QueueIT;
 			packageProductDependencies = (
+				90923F942ED1CE3D00BE8A55 /* Supabase */,
 			);
 			productName = QueueIT;
 			productReference = 90CBEDAA2E9BD7DE00CCCC72 /* QueueIT.app */;
@@ -195,6 +214,9 @@
 			);
 			mainGroup = 90CBEDA12E9BD7DE00CCCC72;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 90CBEDAB2E9BD7DE00CCCC72 /* Products */;
 			projectDirPath = "";
@@ -400,6 +422,9 @@
 				DEVELOPMENT_TEAM = V8S6S975CD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QueueIT/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Queue IT";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -411,7 +436,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = DF.QueueIT;
+				PRODUCT_BUNDLE_IDENTIFIER = DF.QueueIT12;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -429,6 +454,9 @@
 				DEVELOPMENT_TEAM = V8S6S975CD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QueueIT/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Queue IT";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -560,6 +588,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		90923F942ED1CE3D00BE8A55 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 90923F932ED1CE3C00BE8A55 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 90CBEDA22E9BD7DE00CCCC72 /* Project object */;
 }
