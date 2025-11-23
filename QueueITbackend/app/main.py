@@ -1,12 +1,19 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
+from app.exception_handlers import install_exception_handlers
+from app.logging_config import configure_logging, get_logger
+from app.middleware import AccessLogMiddleware, RequestIDMiddleware
 
 from app.core.auth import verify_jwt
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 settings = get_settings()
+configure_logging()
+logger = get_logger("app")
 
 app = FastAPI(
     title=settings.app_name,
@@ -23,10 +30,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(AccessLogMiddleware, metrics_enabled=settings.enable_metrics)
+app.add_middleware(RequestIDMiddleware, header_name=settings.request_id_header)
+install_exception_handlers(app)
 
 @app.get("/healthz")
 def healthz() -> dict:
     return {"status": "ok"}
+
+
+if settings.enable_metrics:
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics() -> PlainTextResponse:
+        return PlainTextResponse(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 app.include_router(
@@ -40,7 +57,7 @@ app.include_router(
 @app.on_event("startup")
 def on_startup() -> None:
     # Print relative docs paths; runner prints absolute URL
-    print("FastAPI app started. Docs: /docs | Redoc: /redoc | Health: /healthz")
+    logger.info("app.startup", docs="/docs", redoc="/redoc", health="/healthz")
 
 # --- Custom OpenAPI Schema (adds global BearerAuth once) ---
 from fastapi.openapi.utils import get_openapi

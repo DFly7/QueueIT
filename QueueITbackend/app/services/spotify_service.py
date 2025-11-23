@@ -4,7 +4,11 @@ import time
 from typing import Any, Dict, Optional
 
 import requests
+import structlog
 from app.core.config import get_settings
+from app.utils.log_context import get_request_id
+
+logger = structlog.get_logger("spotify")
 
 # --- Simple in-memory cache for the token ---
 _cached_token: Optional[Dict[str, Any]] = None
@@ -27,14 +31,31 @@ def _get_access_token() -> str:
     b64_auth_str = base64.b64encode(auth_str.encode()).decode()
 
     # <-- CHANGED: Using the real Spotify Accounts URL
+    start = time.perf_counter()
     response = requests.post(
         "https://accounts.spotify.com/api/token",
         headers={"Authorization": f"Basic {b64_auth_str}"},
         data={"grant_type": "client_credentials"},
         timeout=10,
     )
-    response.raise_for_status()
+    duration_ms = (time.perf_counter() - start) * 1000
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        logger.error(
+            "spotify.token.error",
+            status=response.status_code,
+            duration_ms=round(duration_ms, 2),
+            error=str(exc),
+            request_id=get_request_id(),
+        )
+        raise
     token_data = response.json()
+    logger.info(
+        "spotify.token.refreshed",
+        duration_ms=round(duration_ms, 2),
+        request_id=get_request_id(),
+    )
 
     # Cache the new token with its expiration time
     _cached_token = {
@@ -56,8 +77,30 @@ def search_spotify(query: str, search_type: str = "track", limit: int = 5) -> Di
     params = {"q": query, "type": search_type, "limit": limit}
     headers = {"Authorization": f"Bearer {token}"}
 
+    start = time.perf_counter()
     response = requests.get(api_url, headers=headers, params=params, timeout=10)
-    response.raise_for_status()
+    duration_ms = (time.perf_counter() - start) * 1000
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        logger.error(
+            "spotify.search.error",
+            method="GET",
+            path="/v1/search",
+            duration_ms=round(duration_ms, 2),
+            status=response.status_code,
+            error=str(exc),
+            request_id=get_request_id(),
+        )
+        raise
+    logger.info(
+        "spotify.search",
+        method="GET",
+        path="/v1/search",
+        duration_ms=round(duration_ms, 2),
+        status=response.status_code,
+        request_id=get_request_id(),
+    )
     
     # <-- REMOVED: No need for clean_dict. Return the raw data.
     # The Pydantic response_model will handle filtering.

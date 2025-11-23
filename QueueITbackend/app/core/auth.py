@@ -1,13 +1,16 @@
 # app/core/auth.py
 
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Request
 from typing import Optional, Dict
 import jwt
 import requests
+import structlog
 from app.core.config import get_settings
 from supabase import create_client, Client
 from typing import TypedDict, Any
 from pydantic import BaseModel
+
+from app.utils.log_context import set_user_id
 
 
 class AuthenticatedClient(BaseModel):
@@ -26,6 +29,9 @@ class AuthData(TypedDict):
 # --- Configuration ---
 settings = get_settings()
 JWK_URL = f"{settings.supabase_url}/auth/v1/.well-known/jwks.json"
+
+logger = structlog.get_logger("auth")
+
 
 class JWKSManager:
     """
@@ -46,6 +52,7 @@ class JWKSManager:
             response = requests.get(self.jwk_url)
             response.raise_for_status()
             self.jwks = response.json()
+            logger.debug("jwks.refreshed", key_count=len(self.jwks.get("keys", [])))
         except requests.exceptions.RequestException as e:
             # If fetching fails, we'll keep the old cache.
             # If the cache is empty, we must raise an error.
@@ -84,12 +91,13 @@ jwk_manager = JWKSManager(JWK_URL)
 
 # --- FastAPI Dependency ---
 def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
+def verify_jwt(request: Request, authorization: Optional[str] = Header(None)) -> Dict:
     """
     Verifies Supabase JWT using the JWKSManager.
     This is the dependency that will be used in your routers.
     """
-    print(f"[DEBUG] Verifying JWT: {authorization}")
     if not authorization:
+        logger.warning("auth.missing_header")
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
     try:
@@ -109,16 +117,24 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
             algorithms=["RS256", "ES256"], # Support both algs
             audience="authenticated",      # CRITICAL: Verify audience
         )
-        return {"token": token, "payload": decoded}   
+        user_id = decoded.get("sub")
+        if request:
+            request.state.user_id = user_id
+        set_user_id(user_id)
+        logger.debug("auth.token.validated", user_id=user_id, audience=decoded.get("aud"))
+        return {"token": token, "payload": decoded}
 
     except jwt.ExpiredSignatureError:
+        logger.warning("auth.token.expired")
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError as e:
+        logger.warning("auth.token.invalid", error=str(e))
         raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
     except HTTPException as e:
         # Re-raise HTTPExceptions (like "Invalid Kid")
         raise e
     except Exception as e:
+        logger.error("auth.token.error", error=str(e), exc_info=True)
         # Catch-all for other errors
         raise HTTPException(status_code=401, detail=f"Token verification failed: {e}")
 
@@ -140,9 +156,7 @@ def get_supabase_client_as_user(
     user_email = auth_data["payload"].get("email")
     user_role = auth_data["payload"].get("role")
 
-    print(f"User ID: {user_id}")
-    print(f"User Email: {user_email}")
-    print(f"User Role: {user_role}")
+    logger.debug("supabase.client.as_user", user_id=user_id, user_email=user_email, user_role=user_role)
 
     supabase = create_client(
         settings.supabase_url,
@@ -164,7 +178,7 @@ def get_authenticated_client(
     """
     user_id = auth_data["payload"]["sub"]
     user_email = auth_data["payload"].get("email")
-    print(f"Authenticated client for user: {user_email} ({user_id})")
+    logger.debug("supabase.authenticated_client", user_id=user_id, user_email=user_email)
 
     supabase = create_client(
         settings.supabase_url,

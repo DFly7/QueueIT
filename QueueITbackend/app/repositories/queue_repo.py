@@ -4,6 +4,8 @@ from typing import Optional, Dict, Any, List, Tuple
 
 from supabase import Client
 
+from app.utils.log_context import log_db_operation
+
 
 class QueueRepository:
     """
@@ -24,32 +26,45 @@ class QueueRepository:
         song_spotify_id: str,
         status: str = "queued",
     ) -> Dict[str, Any]:
-        response = (
-            self.client
-            .from_("queued_songs")
-            .insert(
-                {
-                    "session_id": session_id,
-                    "added_by_id": added_by_id,
-                    "status": status,
-                    "song_spotify_id": song_spotify_id,
-                },
-                returning="representation"
-            )
-            .execute()
+        response = log_db_operation(
+            operation="queue.add_song",
+            table="queued_songs",
+            params={
+                "session_id": session_id,
+                "added_by_id": added_by_id,
+                "song_spotify_id": song_spotify_id,
+                "status": status,
+            },
+            executor=lambda: (
+                self.client.from_("queued_songs")
+                .insert(
+                    {
+                        "session_id": session_id,
+                        "added_by_id": added_by_id,
+                        "status": status,
+                        "song_spotify_id": song_spotify_id,
+                    },
+                    returning="representation",
+                )
+                .execute()
+            ),
         )
         if response.data is None:
             raise ValueError("Failed to insert queued song")
         return response.data[0] # <-- This returns the DICTIONARY   
 
     def get_queued_song(self, queued_song_id: str) -> Optional[Dict[str, Any]]:
-        response = (
-            self.client
-            .from_("queued_songs")
-            .select("*")
-            .eq("id", queued_song_id)
-            .maybe_single()
-            .execute()
+        response = log_db_operation(
+            operation="queue.get_queued_song",
+            table="queued_songs",
+            params={"queued_song_id": queued_song_id},
+            executor=lambda: (
+                self.client.from_("queued_songs")
+                .select("*")
+                .eq("id", queued_song_id)
+                .maybe_single()
+                .execute()
+            ),
         )
         return response.data
 
@@ -61,13 +76,17 @@ class QueueRepository:
         - votes (sum of vote_value from 'votes')
         Sorted by votes desc, created_at asc.
         """
-        queued_resp = (
-            self.client
-            .from_("queued_songs")
-            .select("*")
-            .eq("session_id", session_id)
-            .order("created_at", desc=False)
-            .execute()
+        queued_resp = log_db_operation(
+            operation="queue.list_session_queue",
+            table="queued_songs",
+            params={"session_id": session_id},
+            executor=lambda: (
+                self.client.from_("queued_songs")
+                .select("*")
+                .eq("session_id", session_id)
+                .order("created_at", desc=False)
+                .execute()
+            ),
         )
         queued_rows: List[Dict[str, Any]] = queued_resp.data or []
         if not queued_rows:
@@ -108,19 +127,23 @@ class QueueRepository:
         """
         
         # This one call handles both creating a new vote and updating an old one.
-        vote_resp = (
-            self.client
-            .from_("votes")
-            .upsert(
-                {
-                    "queued_song_id": queued_song_id,
-                    "user_id": user_id,
-                    "vote_value": vote_value,
-                },
-                on_conflict="queued_song_id, user_id",  # <-- IMPORTANT: See step 2
-                returning="representation"
-            )
-            .execute()
+        vote_resp = log_db_operation(
+            operation="votes.upsert",
+            table="votes",
+            params={"queued_song_id": queued_song_id, "user_id": user_id},
+            executor=lambda: (
+                self.client.from_("votes")
+                .upsert(
+                    {
+                        "queued_song_id": queued_song_id,
+                        "user_id": user_id,
+                        "vote_value": vote_value,
+                    },
+                    on_conflict="queued_song_id, user_id",
+                    returning="representation",
+                )
+                .execute()
+            ),
         )
 
         # Check for RLS errors or other failures
@@ -136,12 +159,16 @@ class QueueRepository:
         if not spotify_ids:
             return {}
         ids_list = list(spotify_ids)
-        resp = (
-            self.client
-            .from_("songs")
-            .select("*")
-            .in_("spotify_id", ids_list)
-            .execute()
+        resp = log_db_operation(
+            operation="songs.fetch_batch",
+            table="songs",
+            params={"spotify_ids": list(spotify_ids)},
+            executor=lambda: (
+                self.client.from_("songs")
+                .select("*")
+                .in_("spotify_id", ids_list)
+                .execute()
+            ),
         )
         rows: List[Dict[str, Any]] = resp.data or []
         return {row["spotify_id"]: row for row in rows}
@@ -150,12 +177,16 @@ class QueueRepository:
         if not user_ids:
             return {}
         ids_list = list(user_ids)
-        resp = (
-            self.client
-            .from_("users")
-            .select("id, username")
-            .in_("id", ids_list)
-            .execute()
+        resp = log_db_operation(
+            operation="users.fetch_batch",
+            table="users",
+            params={"user_ids": list(user_ids)},
+            executor=lambda: (
+                self.client.from_("users")
+                .select("id, username")
+                .in_("id", ids_list)
+                .execute()
+            ),
         )
         rows: List[Dict[str, Any]] = resp.data or []
         return {row["id"]: row for row in rows}
@@ -164,12 +195,16 @@ class QueueRepository:
         if not queued_ids:
             return {}
         ids_list = list(queued_ids)
-        resp = (
-            self.client
-            .from_("votes")
-            .select("queued_song_id, vote_value")
-            .in_("queued_song_id", ids_list)
-            .execute()
+        resp = log_db_operation(
+            operation="votes.fetch_sum",
+            table="votes",
+            params={"queued_ids": list(queued_ids)},
+            executor=lambda: (
+                self.client.from_("votes")
+                .select("queued_song_id, vote_value")
+                .in_("queued_song_id", ids_list)
+                .execute()
+            ),
         )
         rows: List[Dict[str, Any]] = resp.data or []
         totals: Dict[str, int] = {}

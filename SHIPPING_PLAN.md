@@ -422,6 +422,50 @@ The original plan underestimated:
 
 ---
 
+## Logging Rollout Plan (New)
+
+### Work Breakdown (Priority Order)
+
+1. **logging:setup** — 1 day — Configure `structlog`, env plumbing, stdout JSON — **Critical** — Owner: `@agent`
+2. **logging:request-id** — 0.5 day — Middleware + response header + tests — **Critical** — Owner: `@agent` — Depends on `logging:setup`
+3. **logging:access** — 0.5 day — Access middleware + Prometheus metrics — **Critical** — Owner: `@agent` — Depends on `logging:request-id`
+4. **logging:exceptions** — 0.5 day — Central handlers + Sentry integration — **Critical** — Owner: `@agent` — Depends on `logging:setup`
+5. **logging:db** — 1 day — Slow-query logging & sanitizers — **High** — Owner: `@agent`
+6. **logging:background** — 0.5 day — Context propagation helper + docs — **High** — Owner: `@agent`
+7. **logging:docs-tests-ci** — 1 day — Pytest coverage, `docs/logging.md`, CI workflow — **High** — Owner: `@agent` — Depends on previous tasks
+
+### Timeline & Dependencies
+
+- **Day 1:** Complete logging config + request-id middleware, land smoke tests.
+- **Day 2:** Access logs, Prometheus counters/histograms, exception handler wiring.
+- **Day 3:** DB + third-party instrumentation, background task helper.
+- **Day 4:** Documentation updates, CI workflow, staging dry-run.
+
+### Rollout / Deployment Plan
+
+1. Deploy to staging with `LOG_LEVEL=INFO`, `LOG_JSON=true`, `ENABLE_PROMETHEUS=true`.
+2. Hit `/healthz`, `/metrics`, and authenticated endpoints; confirm log entries in aggregator contain `request_id` and `user_id`.
+3. Enable `SENTRY_DSN` in staging, trigger a synthetic error, ensure it appears in Sentry with the same `request_id`.
+4. Promote to production during a low-traffic window while monitoring request latency histograms and error counts.
+
+### Rollback Plan
+
+- Toggle `LOG_ENRICHMENT=false` to reduce payload size if volume spikes.
+- Set `ENABLE_PROMETHEUS=false` if scraping impacts performance.
+- Remove `SENTRY_DSN` to disable error forwarding if noise overwhelms on-call.
+- Revert PR `chore(logging): implement structured, request-id aware logging` for full rollback.
+
+### Post-Deploy Checklist
+
+- [ ] Responses include `X-Request-ID` in staging and production.
+- [ ] Log aggregation dashboards show `service`, `env`, `request_id`, `user_id`.
+- [ ] Prometheus histograms trend within pre-change latency bands.
+- [ ] Triggered HTTP 4xx/5xx logs correlate with Sentry events.
+- [ ] Background task logs display `background_task_id` and inherit request ids.
+- [ ] Runbook updated with troubleshooting steps for logging config.
+
+---
+
 #### Day 7: Backend Deployment
 
 **Tasks:**
