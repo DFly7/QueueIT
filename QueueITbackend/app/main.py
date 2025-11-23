@@ -3,16 +3,50 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-
 from app.core.auth import verify_jwt
 
+# Logging and middleware
+from app.logging_config import setup_logging, get_logger
+from app.middleware import RequestIDMiddleware, AccessLogMiddleware
+from app.exception_handlers import register_exception_handlers
+
+# Optional: Sentry for error tracking
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
 settings = get_settings()
+
+# Initialize structured logging
+setup_logging()
+logger = get_logger(__name__)
+
+# Initialize Sentry if configured
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.sentry_environment,
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        integrations=[
+            StarletteIntegration(),
+            FastApiIntegration(),
+        ],
+    )
+    logger.info("sentry_initialized", environment=settings.sentry_environment)
 
 app = FastAPI(
     title=settings.app_name,
     swagger_ui_parameters={"persistAuthorization": True},  # Keeps JWT after refresh
 )
 
+# Register exception handlers for structured error logging
+register_exception_handlers(app)
+
+# Add logging middleware (order matters - request ID first, then access log)
+app.add_middleware(AccessLogMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+# CORS middleware
 cors_origins = ["*"] if settings.allowed_origins == ["*"] else settings.allowed_origins
 
 app.add_middleware(
@@ -29,6 +63,16 @@ def healthz() -> dict:
     return {"status": "ok"}
 
 
+# Prometheus metrics endpoint (optional)
+if settings.enable_metrics:
+    from prometheus_client import make_asgi_app
+    
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
+    
+    logger.info("prometheus_metrics_enabled", endpoint="/metrics")
+
+
 app.include_router(
     api_router, 
     prefix="/api/v1"
@@ -39,8 +83,21 @@ app.include_router(
 
 @app.on_event("startup")
 def on_startup() -> None:
+    logger.info(
+        "application_started",
+        app_name=settings.app_name,
+        environment=settings.environment,
+        debug=settings.debug,
+        log_level=settings.log_level,
+        log_json=settings.log_json,
+    )
     # Print relative docs paths; runner prints absolute URL
     print("FastAPI app started. Docs: /docs | Redoc: /redoc | Health: /healthz")
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    logger.info("application_shutdown", app_name=settings.app_name)
 
 # --- Custom OpenAPI Schema (adds global BearerAuth once) ---
 from fastapi.openapi.utils import get_openapi

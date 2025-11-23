@@ -407,16 +407,252 @@ The original plan underestimated:
 
 ---
 
+### 📊 COMPLETED: Structured Logging Implementation
+
+**Status:** ✅ COMPLETE  
+**Completed:** November 23, 2025  
+**Owner:** @agent
+
+#### Overview
+
+Production-grade structured logging has been implemented across the entire FastAPI backend with:
+- JSON structured logs for production
+- Request ID correlation (X-Request-ID header)
+- Comprehensive exception handling
+- PII masking utilities
+- Background task logging
+- Sentry integration (optional)
+- Prometheus metrics endpoint (optional)
+
+#### Components Delivered
+
+1. **Core Logging System** (`app/logging_config.py`)
+   - ✅ Structlog configuration with JSON output
+   - ✅ Development-friendly console output
+   - ✅ Automatic PII masking
+   - ✅ Service/environment context injection
+
+2. **Middleware** (`app/middleware/`)
+   - ✅ RequestIDMiddleware - UUID4 request IDs, X-Request-ID header
+   - ✅ AccessLogMiddleware - Request/response logging with duration
+
+3. **Exception Handlers** (`app/exception_handlers.py`)
+   - ✅ HTTP exception handler (4xx, 5xx)
+   - ✅ Validation error handler (422)
+   - ✅ Unhandled exception handler with stack traces
+
+4. **Utilities** (`app/utils/log_context.py`)
+   - ✅ PII masking functions
+   - ✅ Background task logging context manager
+   - ✅ Safe logging helpers
+   - ✅ Context binding utilities
+
+5. **Configuration** (`app/core/config.py`)
+   - ✅ LOG_LEVEL environment variable
+   - ✅ LOG_JSON toggle (dev vs prod)
+   - ✅ Sentry DSN configuration
+   - ✅ Prometheus metrics toggle
+
+6. **Tests** (`tests/`)
+   - ✅ Middleware tests (request ID, access logs)
+   - ✅ Exception handler tests
+   - ✅ PII masking tests
+   - ✅ Integration tests with pytest
+
+7. **Documentation** (`docs/LOGGING.md`)
+   - ✅ Comprehensive usage guide
+   - ✅ Configuration examples
+   - ✅ Integration with Sentry/Prometheus/Loki
+   - ✅ Best practices and troubleshooting
+
+8. **Configuration Files**
+   - ✅ ENV.example with logging variables
+   - ✅ pytest.ini for test configuration
+   - ✅ Updated requirements.txt with dependencies
+
+#### Rollout Plan
+
+**Phase 1: Development Testing (Completed)**
+- [x] Local testing with LOG_JSON=false
+- [x] Verify X-Request-ID header present
+- [x] Verify log format and fields
+- [x] Run test suite: `pytest -v`
+
+**Phase 2: Staging Deployment (Next)**
+- [ ] Set environment variables on staging:
+  ```bash
+  LOG_LEVEL=INFO
+  LOG_JSON=true
+  SENTRY_DSN=<staging-dsn>
+  ENABLE_METRICS=true
+  ```
+- [ ] Deploy to staging
+- [ ] Monitor logs for 24 hours
+- [ ] Verify request IDs in errors
+- [ ] Check Sentry for error reports
+- [ ] Test Prometheus /metrics endpoint
+
+**Phase 3: Production Deployment**
+- [ ] Set production environment variables
+- [ ] Deploy with zero-downtime strategy
+- [ ] Monitor error rates
+- [ ] Verify log aggregation working
+- [ ] Set up alerts for error spikes
+
+**Phase 4: Post-Deployment**
+- [ ] Configure log retention policies
+- [ ] Set up dashboards in log aggregator
+- [ ] Train team on log querying
+- [ ] Document runbook for common issues
+
+#### Rollback Plan
+
+If issues arise:
+
+1. **Quick Disable (Environment Variable)**
+   ```bash
+   LOG_LEVEL=ERROR  # Reduce log volume
+   ```
+   Restart application
+
+2. **Complete Rollback**
+   - Revert to previous deployment
+   - Logs will continue but may be less structured
+   - No breaking API changes (only X-Request-ID header added)
+
+3. **Feature Flag (if needed)**
+   Add to `config.py`:
+   ```python
+   enable_structured_logging: bool = os.getenv("ENABLE_STRUCTURED_LOGGING", "true").lower() == "true"
+   ```
+
+#### Verification Checklist
+
+**Automated:**
+- [x] All tests pass: `pytest -v`
+- [x] No linting errors
+- [x] Dependencies installed
+
+**Manual (Local):**
+- [x] Run server: `uvicorn app.main:app --reload`
+- [x] Request has X-Request-ID: `curl -v http://localhost:8000/healthz`
+- [x] Logs are structured JSON when LOG_JSON=true
+- [x] Logs contain: request_id, method, path, status, duration_ms
+- [x] Exception includes stack trace: `curl http://localhost:8000/nonexistent`
+
+**Manual (Staging - Todo):**
+- [ ] Deploy to staging
+- [ ] X-Request-ID header present on all endpoints
+- [ ] Logs visible in log aggregator
+- [ ] Errors appear in Sentry with request_id
+- [ ] /metrics endpoint accessible
+- [ ] No performance degradation
+- [ ] Request correlation works end-to-end
+
+#### Environment Variables Required
+
+**Development:**
+```bash
+LOG_LEVEL=DEBUG
+LOG_JSON=false
+ENABLE_METRICS=true
+```
+
+**Staging:**
+```bash
+LOG_LEVEL=INFO
+LOG_JSON=true
+SENTRY_DSN=https://staging-dsn@sentry.io/project
+SENTRY_ENVIRONMENT=staging
+ENABLE_METRICS=true
+```
+
+**Production:**
+```bash
+LOG_LEVEL=INFO
+LOG_JSON=true
+SENTRY_DSN=https://prod-dsn@sentry.io/project
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=0.1
+ENABLE_METRICS=true
+```
+
+#### Integration Points
+
+**Sentry (Optional):**
+- Automatic error tracking
+- Request ID attached to errors
+- User ID attached when authenticated
+- Stack traces included
+
+**Prometheus (Optional):**
+- Metrics endpoint: `/metrics`
+- Request counts and durations
+- Python runtime metrics
+- Custom business metrics (can be added)
+
+**Log Aggregators:**
+- JSON logs to stdout
+- Compatible with: Loki, ELK, Datadog, Splunk
+- Example Promtail config in docs/LOGGING.md
+
+#### Post-Deploy Monitoring
+
+**Day 1:**
+- Monitor log volume (should not significantly increase)
+- Check for errors in Sentry
+- Verify request IDs appearing in logs
+- Check /metrics endpoint response time
+
+**Week 1:**
+- Review slow requests (duration_ms > 1000)
+- Analyze error patterns by request_id
+- Validate PII masking working
+- Check for any performance impact
+
+**Ongoing:**
+- Set up alerts for error rate > 1%
+- Dashboard for request durations
+- Weekly review of error logs
+- Monthly review of sensitive data in logs
+
+#### Success Metrics
+
+- ✅ Zero breaking changes to API
+- ✅ X-Request-ID header on all responses
+- ✅ Structured JSON logs in production
+- ✅ All tests passing
+- ⏳ <5% performance overhead (to be measured in staging)
+- ⏳ Request correlation working end-to-end (to be verified in staging)
+- ⏳ Zero PII leaks in logs (ongoing monitoring)
+
+#### Known Limitations
+
+1. **Database Query Logging:** Not yet implemented
+   - Future enhancement: Add SQLAlchemy slow query logging
+   - Workaround: Enable database logging at DB level
+
+2. **Rate Limiting:** Not yet implemented
+   - Separate task (see Day 6)
+   - Logging is ready to support it
+
+3. **Log Sampling:** All requests logged
+   - Consider sampling high-volume endpoints in future
+   - Can add sampling logic to AccessLogMiddleware
+
+---
+
 ### 🚀 Week 2: Production Readiness (5 days)
 
 #### Day 6: Backend Production Prep
 
 **Tasks:**
-- [ ] Add structured logging (JSON logs)
+- [x] ✅ Add structured logging (JSON logs) - **COMPLETE**
+- [x] ✅ Add request IDs for tracing - **COMPLETE**
 - [ ] Implement rate limiting (20 req/min per endpoint)
 - [ ] Add health check with dependency validation
 - [ ] Improve error handling (duplicate codes, validation)
-- [ ] Add request IDs for tracing
+- [ ] Deploy logging to staging and verify
 
 **Success Criteria:** Backend ready for production deployment
 
