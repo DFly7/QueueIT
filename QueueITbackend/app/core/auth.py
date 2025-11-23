@@ -8,6 +8,9 @@ from app.core.config import get_settings
 from supabase import create_client, Client
 from typing import TypedDict, Any
 from pydantic import BaseModel
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class AuthenticatedClient(BaseModel):
@@ -88,7 +91,6 @@ def verify_jwt(authorization: Optional[str] = Header(None)) -> Dict:
     Verifies Supabase JWT using the JWKSManager.
     This is the dependency that will be used in your routers.
     """
-    print(f"[DEBUG] Verifying JWT: {authorization}")
     if not authorization:
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
@@ -140,9 +142,12 @@ def get_supabase_client_as_user(
     user_email = auth_data["payload"].get("email")
     user_role = auth_data["payload"].get("role")
 
-    print(f"User ID: {user_id}")
-    print(f"User Email: {user_email}")
-    print(f"User Role: {user_role}")
+    logger.debug(
+        "creating_user_supabase_client",
+        user_id=user_id,
+        user_email=user_email,
+        user_role=user_role,
+    )
 
     supabase = create_client(
         settings.supabase_url,
@@ -164,7 +169,12 @@ def get_authenticated_client(
     """
     user_id = auth_data["payload"]["sub"]
     user_email = auth_data["payload"].get("email")
-    print(f"Authenticated client for user: {user_email} ({user_id})")
+    
+    logger.debug(
+        "authenticated_client_created",
+        user_id=user_id,
+        user_email=user_email,
+    )
 
     supabase = create_client(
         settings.supabase_url,

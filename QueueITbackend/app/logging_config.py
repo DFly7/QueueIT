@@ -97,6 +97,16 @@ def setup_logging() -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
     
+    # Silence HTTP client debug output (httpx, h2, hpack)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("h2").setLevel(logging.WARNING)
+    logging.getLogger("hpack").setLevel(logging.WARNING)
+    
+    # Silence other noisy third-party libraries
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    
     # Common processors for all environments
     shared_processors: list[Processor] = [
         structlog.contextvars.merge_contextvars,  # Merge context vars (request_id, user_id)

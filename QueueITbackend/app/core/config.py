@@ -18,6 +18,10 @@ class Settings(BaseModel):
     log_level: str = os.getenv("LOG_LEVEL", "INFO" if environment == "production" else "DEBUG")
     log_json: bool = os.getenv("LOG_JSON", "true" if environment == "production" else "false").lower() == "true"
     
+    # Access log enrichment
+    log_request_body: bool = os.getenv("LOG_REQUEST_BODY", "true").lower() == "true"
+    log_request_body_max_size: int = int(os.getenv("LOG_REQUEST_BODY_MAX_SIZE", "1000"))  # bytes
+    
     # Sentry configuration (optional)
     sentry_dsn: str | None = os.getenv("SENTRY_DSN")
     sentry_environment: str = os.getenv("SENTRY_ENVIRONMENT", environment)

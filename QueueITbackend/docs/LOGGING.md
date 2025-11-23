@@ -582,6 +582,30 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 ```
 
+### Problem: Verbose HTTP/2 Debug Output (httpx, h2, hpack)
+
+**Symptoms:**
+```
+Encoding 71 with 7 bits
+Adding (b'accept-encoding', b'gzip, deflate') to the header table...
+Decoded 8, consumed 1 bytes
+```
+
+**Solution:**
+These verbose logs are from httpx/h2/hpack debug logging. They're automatically silenced in `logging_config.py`:
+
+```python
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("h2").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+```
+
+If you're still seeing them, ensure:
+1. `setup_logging()` is called in `main.py` before any HTTP requests
+2. You're not running with `PYTHONVERBOSE=1` or similar environment variables
+3. Restart the application after changes
+
 ---
 
 ## Best Practices

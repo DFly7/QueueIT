@@ -7,7 +7,7 @@ from app.core.auth import verify_jwt
 
 # Logging and middleware
 from app.logging_config import setup_logging, get_logger
-from app.middleware import RequestIDMiddleware, AccessLogMiddleware
+from app.middleware import RequestIDMiddleware, AccessLogMiddleware, AuthContextMiddleware
 from app.exception_handlers import register_exception_handlers
 
 # Optional: Sentry for error tracking
@@ -42,8 +42,13 @@ app = FastAPI(
 # Register exception handlers for structured error logging
 register_exception_handlers(app)
 
-# Add logging middleware (order matters - request ID first, then access log)
+# Add logging middleware (order matters!)
+# Middleware executes in reverse order of registration:
+# 1. RequestIDMiddleware - generates/extracts request_id
+# 2. AuthContextMiddleware - extracts user details from JWT
+# 3. AccessLogMiddleware - logs with full context
 app.add_middleware(AccessLogMiddleware)
+app.add_middleware(AuthContextMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
 # CORS middleware
