@@ -62,8 +62,8 @@ def add_service_context(logger: Any, method_name: str, event_dict: EventDict) ->
     """
     Processor to add service-level context to all logs.
     """
-    event_dict["service"] = "api"
-    event_dict["env"] = settings.environment
+    event_dict.setdefault("service", settings.app_name)
+    event_dict.setdefault("env", settings.environment)
     return event_dict
 
 
