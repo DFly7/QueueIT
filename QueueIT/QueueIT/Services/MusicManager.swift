@@ -11,6 +11,8 @@ class MusicManager {
     
     private var cancellables = Set<AnyCancellable>()
     private var onSongFinished: (() -> Void)?
+    private var pollTask: Task<Void, Never>?
+    private var playStartedAt: Date?
     
     private init() {}
     
@@ -83,26 +85,25 @@ class MusicManager {
     func play(song: Song, onFinished: @escaping () -> Void) async {
         let player = ApplicationMusicPlayer.shared
         self.onSongFinished = onFinished
+        self.playStartedAt = Date()
         
         do {
             player.queue = [song]
             try await player.play()
             
-            // Monitor playback state
+            // Monitor via both Combine (fast path) and polling (reliable fallback)
+            // Apple Music's objectWillChange can be unreliable when song ends
             startMonitoringPlayback()
+            startPollingForSongEnd()
         } catch {
             print("Failed to play song: \(error.localizedDescription)")
         }
     }
     
     private func startMonitoringPlayback() {
-        // Cancel previous subscriptions
         cancellables.removeAll()
-        
         let player = ApplicationMusicPlayer.shared
         
-        // Monitor both state AND queue - song end can be signaled by either
-        // (queue.currentEntry becomes nil when last song ends; state may not always fire)
         player.state.objectWillChange
             .sink { [weak self] _ in
                 Task { @MainActor in
@@ -120,16 +121,38 @@ class MusicManager {
             .store(in: &cancellables)
     }
     
+    /// Polling fallback - Apple Music often doesn't fire objectWillChange when song ends
+    private func startPollingForSongEnd() {
+        pollTask?.cancel()
+        pollTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                guard !Task.isCancelled else { break }
+                await checkIfSongFinished()
+                guard onSongFinished != nil else { break } // Already fired, stop polling
+            }
+        }
+    }
+    
     @MainActor
     private func checkIfSongFinished() async {
-        let player = ApplicationMusicPlayer.shared
+        guard onSongFinished != nil else { return }
         
-        // Song finished: queue emptied (currentEntry nil) and not actively playing
-        // Accept .stopped or .paused (player can end in either state when queue completes)
+        // Grace period: ignore for first 5 seconds after play() - avoids false positives during
+        // song transitions when playbackTime/state can be stale from the previous track
+        if let started = playStartedAt, Date().timeIntervalSince(started) < 5 {
+            return
+        }
+        
+        let player = ApplicationMusicPlayer.shared
         let queueEmpty = player.queue.currentEntry == nil
         let notPlaying = player.state.playbackStatus != .playing
-        if queueEmpty && notPlaying && onSongFinished != nil {
+        
+        if queueEmpty && notPlaying {
             print("Song finished playing")
+            pollTask?.cancel()
+            pollTask = nil
+            playStartedAt = nil
             onSongFinished?()
             onSongFinished = nil
         }
@@ -141,6 +164,9 @@ class MusicManager {
     
     func stop() {
         ApplicationMusicPlayer.shared.stop()
+        pollTask?.cancel()
+        pollTask = nil
+        playStartedAt = nil
         cancellables.removeAll()
         onSongFinished = nil
     }
