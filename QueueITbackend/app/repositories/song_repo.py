@@ -11,12 +11,12 @@ class SongRepository:
     def __init__(self, client: Client):
         self.client = client
 
-    def get_by_spotify_id(self, spotify_id: str) -> Optional[Dict[str, Any]]:
+    def get_by_external_id(self, external_id: str) -> Optional[Dict[str, Any]]:
         response = (
             self.client
             .from_("songs")
             .select("*")
-            .eq("spotify_id", spotify_id)
+            .eq("external_id", external_id)
             .maybe_single()
             .execute()
         )
@@ -25,13 +25,14 @@ class SongRepository:
     def upsert_song(
         self,
         *,
-        spotify_id: str,
+        external_id: str,
         name: str,
         artist: str,
         album: str,
         durationMSs: int,
         image_url: str,
         isrc_identifier: str,
+        source: str = "spotify",
     ) -> Dict[str, Any]:
         """
         Ensures the song exists in 'songs' table.
@@ -42,22 +43,23 @@ class SongRepository:
             .from_("songs")
             .upsert(
                 {
-                    "spotify_id": spotify_id,
+                    "external_id": external_id,
                     "name": name,
                     "artist": artist,
                     "album": album,
                     "durationMSs": durationMSs,
                     "image_url": image_url,
                     "isrc_identifier": isrc_identifier,
+                    "source": source,
                 },
-                on_conflict="spotify_id",
+                on_conflict="external_id",
                 ignore_duplicates=False,
                 returning="representation" 
             )
             .execute()
         )
         if response.data is None:
-            raise ValueError(f"Failed to upsert song {spotify_id}")
+            raise ValueError(f"Failed to upsert song {external_id}")
         return response.data
 
 

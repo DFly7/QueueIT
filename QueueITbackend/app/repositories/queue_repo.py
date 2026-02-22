@@ -21,7 +21,7 @@ class QueueRepository:
         *,
         session_id: str,
         added_by_id: str,
-        song_spotify_id: str,
+        song_external_id: str,
         status: str = "queued",
     ) -> Dict[str, Any]:
         response = (
@@ -32,7 +32,7 @@ class QueueRepository:
                     "session_id": session_id,
                     "added_by_id": added_by_id,
                     "status": status,
-                    "song_spotify_id": song_spotify_id,
+                    "song_external_id": song_external_id,
                 },
                 returning="representation"
             )
@@ -52,6 +52,31 @@ class QueueRepository:
             .execute()
         )
         return response.data
+
+    def get_next_queued_song(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the next song in the queue (highest votes, then oldest).
+        Only returns songs with status='queued'.
+        """
+        queue_items = self.list_session_queue(session_id)
+        # Filter for only queued songs (not playing, played, or skipped)
+        queued_items = [item for item in queue_items if item["status"] == "queued"]
+        return queued_items[0] if queued_items else None
+
+    def update_song_status(self, queued_song_id: str, new_status: str) -> Dict[str, Any]:
+        """
+        Update the status of a queued song.
+        """
+        response = (
+            self.client
+            .from_("queued_songs")
+            .update({"status": new_status}, returning="representation")
+            .eq("id", queued_song_id)
+            .execute()
+        )
+        if not response.data:
+            raise ValueError(f"Failed to update status for queued_song {queued_song_id}")
+        return response.data[0]
 
     def list_session_queue(self, session_id: str) -> List[Dict[str, Any]]:
         """
@@ -74,7 +99,7 @@ class QueueRepository:
             return []
 
         # Collect ids for batch fetches
-        song_ids = {row["song_spotify_id"] for row in queued_rows}
+        song_ids = {row["song_external_id"] for row in queued_rows}
         user_ids = {row["added_by_id"] for row in queued_rows}
         queued_ids = {row["id"] for row in queued_rows}
 
@@ -91,7 +116,7 @@ class QueueRepository:
                     "status": row["status"],
                     "added_at": row["created_at"],
                     "votes": votes_sum_by_queued.get(row["id"], 0),
-                    "song": songs_by_id.get(row["song_spotify_id"]),
+                    "song": songs_by_id.get(row["song_external_id"]),
                     "added_by": users_by_id.get(row["added_by_id"]),
                 }
             )
@@ -132,19 +157,19 @@ class QueueRepository:
         return {"vote": vote_resp.data, "total_votes": int(total)}
 
     # --- Internal batch helpers ---
-    def _fetch_songs_map(self, spotify_ids: set[str]) -> Dict[str, Dict[str, Any]]:
-        if not spotify_ids:
+    def _fetch_songs_map(self, external_ids: set[str]) -> Dict[str, Dict[str, Any]]:
+        if not external_ids:
             return {}
-        ids_list = list(spotify_ids)
+        ids_list = list(external_ids)
         resp = (
             self.client
             .from_("songs")
             .select("*")
-            .in_("spotify_id", ids_list)
+            .in_("external_id", ids_list)
             .execute()
         )
         rows: List[Dict[str, Any]] = resp.data or []
-        return {row["spotify_id"]: row for row in rows}
+        return {row["external_id"]: row for row in rows}
 
     def _fetch_users_map(self, user_ids: set[str]) -> Dict[str, Dict[str, Any]]:
         if not user_ids:

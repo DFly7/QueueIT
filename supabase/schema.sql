@@ -6,12 +6,12 @@ CREATE TABLE public.queued_songs (
   session_id uuid NOT NULL,
   added_by_id uuid NOT NULL,
   status USER-DEFINED NOT NULL,
-  song_spotify_id text NOT NULL,
+  song_external_id text NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT queued_songs_pkey PRIMARY KEY (id),
   CONSTRAINT queued_songs_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.sessions(id),
   CONSTRAINT queued_songs_added_by_id_fkey FOREIGN KEY (added_by_id) REFERENCES public.users(id),
-  CONSTRAINT queued_songs_song_spotify_id_fkey FOREIGN KEY (song_spotify_id) REFERENCES public.songs(spotify_id)
+  CONSTRAINT queued_songs_song_external_id_fkey FOREIGN KEY (song_external_id) REFERENCES public.songs(external_id)
 );
 
 CREATE TABLE public.sessions (
@@ -26,14 +26,15 @@ CREATE TABLE public.sessions (
 );
 
 CREATE TABLE public.songs (
-  spotify_id text NOT NULL,
+  external_id text NOT NULL,
   name text NOT NULL,
   artist text NOT NULL,
   album text NOT NULL,
   durationMSs bigint NOT NULL,
   image_url text NOT NULL,
   isrc_identifier text NOT NULL,
-  CONSTRAINT songs_pkey PRIMARY KEY (spotify_id)
+  source varchar(20) NOT NULL DEFAULT 'spotify',
+  CONSTRAINT songs_pkey PRIMARY KEY (external_id)
 );
 
 CREATE TABLE public.users (

@@ -24,6 +24,12 @@ USING (
   OR id = (SELECT current_session FROM public.users WHERE id = auth.uid())
 );
 
+-- Sessions: host can update their session
+CREATE POLICY sessions_update_host ON public.sessions
+FOR UPDATE
+USING (host_id = auth.uid())
+WITH CHECK (host_id = auth.uid());
+
 -- Queued Songs: visible to members of the session
 CREATE POLICY queued_songs_select_members ON public.queued_songs
 FOR SELECT
@@ -38,6 +44,12 @@ WITH CHECK (
   added_by_id = auth.uid()
   AND session_id = (SELECT current_session FROM public.users WHERE id = auth.uid())
 );
+
+-- Queued Songs: host can update song status (for skip, next song, etc.)
+CREATE POLICY queued_songs_update_host ON public.queued_songs
+FOR UPDATE
+USING (session_id IN (SELECT id FROM public.sessions WHERE host_id = auth.uid()))
+WITH CHECK (session_id IN (SELECT id FROM public.sessions WHERE host_id = auth.uid()));
 
 -- Votes: members can insert/update their own votes
 CREATE POLICY votes_insert_members ON public.votes
@@ -59,6 +71,17 @@ WITH CHECK (user_id = auth.uid());
 -- Songs: global read allowed (no user data)
 CREATE POLICY songs_select_all ON public.songs
 FOR SELECT USING (true);
+
+-- Songs: authenticated users can insert new songs
+CREATE POLICY songs_insert_authenticated ON public.songs
+FOR INSERT
+WITH CHECK (true);
+
+-- Songs: authenticated users can update songs (for upserts)
+CREATE POLICY songs_update_authenticated ON public.songs
+FOR UPDATE
+USING (true)
+WITH CHECK (true);
 
 -- Note: Consider adding a separate membership table for more flexible membership management.
 

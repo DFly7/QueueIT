@@ -82,7 +82,7 @@ struct SessionView: View {
                 }
             }
             .sheet(isPresented: $showingSearch) {
-                SearchAndAddView()
+                AppleMusicSearchView()
                     .environmentObject(sessionCoordinator)
             }
             .sheet(isPresented: $showingHostControls) {
