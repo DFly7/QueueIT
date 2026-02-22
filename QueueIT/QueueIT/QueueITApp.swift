@@ -15,7 +15,8 @@ struct QueueITApp: App {
     // Configuration - update these for your environment
     private let supabaseURLString = "https://wbbcuuvoxgmtlqukbuzv.supabase.co"
     private let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiYmN1dXZveGdtdGxxdWtidXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzc4MzAsImV4cCI6MjA3NTkxMzgzMH0.7MUe9aUozsiDfKYbd8GuKhks07advqvg_v21cfZdvjc"
-    private let backendURL = URL(string: "http://localhost:8000")!
+    // private let backendURL = URL(string: "http://localhost:8000")!
+    private let backendURL = URL(string: "https://sallowly-intercommunicable-zonia.ngrok-free.dev")!
     
     @StateObject private var authService: AuthService
     @StateObject private var sessionCoordinator: SessionCoordinator

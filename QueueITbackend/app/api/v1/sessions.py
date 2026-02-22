@@ -76,3 +76,14 @@ def control_session(
     request: SessionControlRequest = Body(...),
 ):
     return control_session_for_user(auth, request)
+
+@router.post("/song_finished")
+def mark_song_finished(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    """
+    Called by the host when the current song finishes playing naturally.
+    Marks it as 'played' and advances to the next song.
+    """
+    from app.services.session_service import song_finished_for_user
+    return song_finished_for_user(auth)

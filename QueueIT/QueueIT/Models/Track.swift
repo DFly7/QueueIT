@@ -7,14 +7,20 @@
 
 import Foundation
 
+enum MusicSource: String, Codable {
+    case spotify = "spotify"
+    case appleMusic = "apple_music"
+}
+
 struct Track: Identifiable, Codable, Hashable {
     let id: String
-    let isrc: String? // ISRC can be missing from Spotify search results
+    let isrc: String?
     let name: String
     let artists: String
     let album: String
     let durationMs: Int
     let imageUrl: URL?
+    let source: MusicSource
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -24,6 +30,7 @@ struct Track: Identifiable, Codable, Hashable {
         case album
         case durationMs = "duration_ms"
         case imageUrl = "image_url"
+        case source
     }
     
     /// Formatted duration as "MM:SS"

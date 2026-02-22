@@ -22,7 +22,7 @@ def _map_queue_item_to_schema(item: Dict[str, Any]) -> QueuedSongResponse:
     Maps an enriched queue item (from QueueRepository.list_session_queue) into QueuedSongResponse.
     """
     track = TrackOut(
-        spotify_id=item["song"]["spotify_id"],
+        external_id=item["song"]["external_id"],
         isrc_identifier=item["song"]["isrc_identifier"],
         name=item["song"]["name"],
         artist=item["song"]["artist"],
@@ -149,12 +149,13 @@ def leave_current_session_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
 
 def control_session_for_user(auth: AuthenticatedClient, request: SessionControlRequest) -> Dict[str, Any]:
     """
-    Minimal control implementation:
-    - skip_current_track: clear current_song
+    Host control implementation:
+    - skip_current_track: marks current song as skipped and advances to next song
     """
     client = auth.client
     user_id = auth.payload["sub"]
     session_repo = SessionRepository(client)
+    queue_repo = QueueRepository(client)
 
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
@@ -167,7 +168,65 @@ def control_session_for_user(auth: AuthenticatedClient, request: SessionControlR
         raise HTTPException(status_code=403, detail="You are not the host of this session")
 
     if request.skip_current_track:
-        session_repo.set_current_song(session_id=session_row["id"], queued_song_id=None)
+        # Mark current song as skipped
+        if session_details.get("current_song"):
+            queue_repo.update_song_status(session_details["current_song"], "skipped")
+        
+        # Advance to next song
+        _advance_to_next_song(session_repo, queue_repo, session_row["id"])
+
+    return {"ok": True}
+
+
+def _advance_to_next_song(
+    session_repo: SessionRepository,
+    queue_repo: QueueRepository,
+    session_id: str
+) -> None:
+    """
+    Helper function to move to the next song in the queue.
+    Sets the next queued song as 'playing' and updates session.current_song.
+    """
+    # Get the next song in queue
+    next_song = queue_repo.get_next_queued_song(session_id)
+    
+    if next_song:
+        # Update the song status to playing
+        queue_repo.update_song_status(next_song["id"], "playing")
+        # Set it as the current song in the session
+        session_repo.set_current_song(session_id=session_id, queued_song_id=next_song["id"])
+    else:
+        # No more songs in queue, clear current_song
+        session_repo.set_current_song(session_id=session_id, queued_song_id=None)
+
+
+def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
+    """
+    Called when the current song finishes playing naturally.
+    Marks it as 'played' and advances to the next song.
+    Only the host can call this.
+    """
+    client = auth.client
+    user_id = auth.payload["sub"]
+    session_repo = SessionRepository(client)
+    queue_repo = QueueRepository(client)
+
+    session_row = session_repo.get_current_for_user(user_id)
+    if not session_row:
+        raise HTTPException(status_code=404, detail="No active session")
+
+    session_details = session_repo.get_by_id(session_row["id"])
+    if not session_details:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session_details["host_id"] != user_id:
+        raise HTTPException(status_code=403, detail="You are not the host of this session")
+
+    # Mark current song as played
+    if session_details.get("current_song"):
+        queue_repo.update_song_status(session_details["current_song"], "played")
+    
+    # Advance to next song
+    _advance_to_next_song(session_repo, queue_repo, session_row["id"])
 
     return {"ok": True}
 
