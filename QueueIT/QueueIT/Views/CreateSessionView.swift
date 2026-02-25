@@ -2,7 +2,7 @@
 //  CreateSessionView.swift
 //  QueueIT
 //
-//  Create a new session with custom join code
+//  Create session with secret-code aesthetic
 //
 
 import SwiftUI
@@ -13,80 +13,88 @@ struct CreateSessionView: View {
     
     @State private var joinCode: String = ""
     @State private var isCreating: Bool = false
+    @FocusState private var isCodeFocused: Bool
     
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
+                AppTheme.ambientGradient
                     .ignoresSafeArea()
                 
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    // Icon and title
-                    VStack(spacing: 16) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 60))
-                            .foregroundStyle(AppTheme.primaryGradient)
-                        
-                        Text("Create Your Session")
-                            .font(AppTheme.title())
-                            .foregroundColor(.white)
-                        
-                        Text("Choose a unique join code that your friends can use")
-                            .font(AppTheme.body())
-                            .foregroundColor(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Join code input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Join Code")
-                            .font(AppTheme.caption())
-                            .foregroundColor(.white.opacity(0.7))
-                        
-                        TextField("Enter code (4-20 characters)", text: $joinCode)
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(AppTheme.headline())
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.top, 16)
-                    
-                    // Error message
-                    if let error = sessionCoordinator.error {
-                        Text(error)
-                            .font(AppTheme.caption())
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Create button
-                    Button(action: createSession) {
-                        if isCreating {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: AppTheme.buttonHeight)
-                        } else {
+                ScrollView {
+                    VStack(spacing: 32) {
+                        VStack(spacing: 20) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 56))
+                                .foregroundStyle(AppTheme.primaryGradient)
+                            
                             Text("Create Session")
-                                .gradientButton(
-                                    gradient: AppTheme.primaryGradient,
-                                    isEnabled: isValidJoinCode
-                                )
+                                .font(AppTheme.largeTitle())
+                                .foregroundColor(AppTheme.textPrimary)
+                            
+                            Text("Pick a code your friends will use to join")
+                                .font(AppTheme.body())
+                                .foregroundColor(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
                         }
+                        .padding(.top, 24)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("JOIN CODE")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(AppTheme.textMuted)
+                                .tracking(1.2)
+                            
+                            TextField("e.g. PARTY2024", text: $joinCode)
+                                .textFieldStyle(.plain)
+                                .font(AppTheme.monoCode())
+                                .foregroundColor(AppTheme.textPrimary)
+                                .padding(18)
+                                .background(AppTheme.surfaceCard)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isCodeFocused ? AppTheme.accentPrimary.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1.5)
+                                )
+                                .cornerRadius(12)
+                                .autocapitalization(.characters)
+                                .disableAutocorrection(true)
+                                .focused($isCodeFocused)
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        if let error = sessionCoordinator.error {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(AppTheme.destructive)
+                                Text(error)
+                                    .font(AppTheme.caption())
+                                    .foregroundColor(AppTheme.destructive)
+                            }
+                            .padding(.horizontal, 24)
+                        }
+                        
+                        Button(action: createSession) {
+                            if isCreating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: AppTheme.buttonHeight)
+                            } else {
+                                Text("Create Session")
+                                    .gradientButton(
+                                        gradient: AppTheme.primaryGradient,
+                                        isEnabled: isValidJoinCode
+                                    )
+                            }
+                        }
+                        .disabled(!isValidJoinCode || isCreating)
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        
+                        Spacer(minLength: 40)
                     }
-                    .disabled(!isValidJoinCode || isCreating)
-                    .padding(.horizontal, 32)
-                    .padding(.top, 8)
-                    
-                    Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -95,7 +103,7 @@ struct CreateSessionView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.accent)
+                    .foregroundColor(AppTheme.accentPrimary)
                 }
             }
         }
@@ -122,9 +130,7 @@ struct CreateSessionView: View {
 #Preview {
     CreateSessionView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
-                    baseURL: URL(string: "http://localhost:8000")!,
-                    authService: AuthService.mock // Use the mock!
-                )))
+            baseURL: URL(string: "http://localhost:8000")!,
+            authService: AuthService.mock
+        )))
 }
-
-

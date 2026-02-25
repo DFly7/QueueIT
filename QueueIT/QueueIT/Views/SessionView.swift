@@ -2,7 +2,7 @@
 //  SessionView.swift
 //  QueueIT
 //
-//  Main session view with Now Playing and Queue
+//  Main session view — vinyl hero, queue list, floating add
 //
 
 import SwiftUI
@@ -15,68 +15,57 @@ struct SessionView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
+                AppTheme.ambientGradient
                     .ignoresSafeArea()
                 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Session info header
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 28) {
                         sessionHeader
                         
-                        // Now Playing section
                         if let nowPlaying = sessionCoordinator.nowPlaying {
                             NowPlayingCard(queuedSong: nowPlaying)
                         } else {
                             emptyNowPlaying
                         }
                         
-                        // Queue section
                         queueSection
                     }
-                    .padding()
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 100)
                 }
                 
-                // Floating Add button
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
-                        Button(action: {
-                            showingSearch = true
-                        }) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 56))
-                                .foregroundStyle(AppTheme.primaryGradient)
-                                .background(
-                                    Circle()
-                                        .fill(Color(.systemBackground))
-                                        .frame(width: 60, height: 60)
-                                )
-                                .shadow(color: AppTheme.accent.opacity(0.3), radius: 12, y: 4)
-                        }
-                        .padding()
+                        addButton
+                            .padding(.trailing, 24)
+                            .padding(.bottom, 24)
                     }
                 }
+                .allowsHitTesting(true)
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: leaveSession) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 6) {
                             Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
                             Text("Leave")
+                                .font(AppTheme.headline())
                         }
-                        .foregroundColor(AppTheme.accent)
+                        .foregroundColor(AppTheme.accentPrimary)
                     }
                 }
                 
                 if sessionCoordinator.isHost {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: {
-                            showingHostControls = true
-                        }) {
+                        Button(action: { showingHostControls = true }) {
                             Image(systemName: "crown.fill")
-                                .foregroundColor(AppTheme.warning)
+                                .font(.system(size: 18))
+                                .foregroundStyle(AppTheme.secondaryGradient)
                         }
                     }
                 }
@@ -92,45 +81,73 @@ struct SessionView: View {
         }
     }
     
-    // MARK: - Subviews
+    private var addButton: some View {
+        Button(action: { showingSearch = true }) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.primaryGradient)
+                    .frame(width: 60, height: 60)
+                    .shadow(color: AppTheme.accentPrimary.opacity(0.4), radius: 16, y: 6)
+                
+                Image(systemName: "plus")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+        }
+        .buttonStyle(AddButtonStyle())
+    }
     
     private var sessionHeader: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             if let session = sessionCoordinator.currentSession?.session {
                 Text(session.joinCode)
-                    .font(AppTheme.title())
-                    .foregroundColor(.white)
+                    .font(AppTheme.monoCode())
+                    .foregroundColor(AppTheme.textPrimary)
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.1))
+                    .padding(.vertical, 14)
+                    .background(AppTheme.surfaceCard)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(AppTheme.accentPrimary.opacity(0.3), lineWidth: 1)
+                    )
                     .cornerRadius(12)
                 
                 Text("Hosted by \(session.host.username ?? "Unknown")")
                     .font(AppTheme.caption())
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(AppTheme.textMuted)
             }
         }
         .padding(.top, 8)
     }
     
     private var emptyNowPlaying: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "music.note.circle")
-                .font(.system(size: 80))
-                .foregroundColor(.white.opacity(0.3))
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.1), lineWidth: 2)
+                    .frame(width: 160, height: 160)
+                
+                Image(systemName: "music.note")
+                    .font(.system(size: 56))
+                    .foregroundColor(.white.opacity(0.25))
+            }
             
             Text("No track playing")
                 .font(AppTheme.headline())
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(AppTheme.textSecondary)
             
-            Text("Add some music to get started!")
+            Text("Add music to get the party started")
                 .font(AppTheme.body())
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(AppTheme.textMuted)
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 300)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(AppTheme.cornerRadius)
+        .frame(height: 280)
+        .background(AppTheme.surfaceCard.opacity(0.6))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cornerRadiusLg)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+        .cornerRadius(AppTheme.cornerRadiusLg)
     }
     
     private var queueSection: some View {
@@ -138,13 +155,13 @@ struct SessionView: View {
             HStack {
                 Text("Up Next")
                     .font(AppTheme.headline())
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
                 
                 Spacer()
                 
                 Text("\(sessionCoordinator.queue.count) songs")
                     .font(AppTheme.caption())
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(AppTheme.textMuted)
             }
             
             if sessionCoordinator.queue.isEmpty {
@@ -158,18 +175,22 @@ struct SessionView: View {
     }
     
     private var emptyQueue: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Image(systemName: "tray")
-                .font(.system(size: 40))
-                .foregroundColor(.white.opacity(0.3))
+                .font(.system(size: 36))
+                .foregroundColor(.white.opacity(0.2))
             
             Text("Queue is empty")
                 .font(AppTheme.body())
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(AppTheme.textMuted)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-        .background(Color.white.opacity(0.05))
+        .padding(.vertical, 44)
+        .background(AppTheme.surfaceCard.opacity(0.5))
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                .stroke(Color.white.opacity(0.04), lineWidth: 1)
+        )
         .cornerRadius(AppTheme.cornerRadius)
     }
     
@@ -180,6 +201,14 @@ struct SessionView: View {
     }
 }
 
+struct AddButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .animation(AppTheme.quickAnimation, value: configuration.isPressed)
+    }
+}
+
 #Preview {
     SessionView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
@@ -187,5 +216,3 @@ struct SessionView: View {
             authService: AuthService(supabaseURL: URL(string: "")!, supabaseAnonKey: "")
         )))
 }
-
-

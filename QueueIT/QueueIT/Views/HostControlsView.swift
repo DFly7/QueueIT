@@ -2,7 +2,7 @@
 //  HostControlsView.swift
 //  QueueIT
 //
-//  Host-only controls for managing session
+//  Host controls — crown aesthetic
 //
 
 import SwiftUI
@@ -17,104 +17,22 @@ struct HostControlsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
+                AppTheme.ambientGradient
                     .ignoresSafeArea()
                 
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(AppTheme.warning)
+                ScrollView {
+                    VStack(spacing: 28) {
+                        header
                         
-                        Text("Host Controls")
-                            .font(AppTheme.title())
-                            .foregroundColor(.white)
+                        VStack(spacing: 14) {
+                            skipButton
+                            lockToggle
+                            sessionInfoCard
+                        }
+                        .padding(.horizontal, 24)
                         
-                        Text("Manage your session")
-                            .font(AppTheme.body())
-                            .foregroundColor(.white.opacity(0.6))
+                        Spacer(minLength: 40)
                     }
-                    .padding(.top, 40)
-                    
-                    Spacer()
-                    
-                    // Controls
-                    VStack(spacing: 16) {
-                        // Skip current track
-                        Button(action: {
-                            showSkipConfirmation = true
-                        }) {
-                            HStack {
-                                Image(systemName: "forward.fill")
-                                    .font(.title2)
-                                Text("Skip Current Track")
-                                Spacer()
-                            }
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                        }
-                        .disabled(sessionCoordinator.nowPlaying == nil)
-                        
-                        // Lock queue toggle
-                        Toggle(isOn: $isLocked) {
-                            HStack {
-                                Image(systemName: isLocked ? "lock.fill" : "lock.open.fill")
-                                    .font(.title2)
-                                Text("Lock Queue")
-                            }
-                            .foregroundColor(.white)
-                        }
-                        .tint(AppTheme.accent)
-                        .padding()
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(12)
-                        .onChange(of: isLocked) { _, newValue in
-                            Task {
-                                await sessionCoordinator.toggleLock(locked: newValue)
-                            }
-                        }
-                        
-                        // Session info
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Session Code")
-                                    .font(AppTheme.caption())
-                                    .foregroundColor(.white.opacity(0.6))
-                                Spacer()
-                                if let joinCode = sessionCoordinator.currentSession?.session.joinCode {
-                                    Text(joinCode)
-                                        .font(AppTheme.headline())
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(8)
-                                }
-                            }
-                            
-                            Divider()
-                                .background(Color.white.opacity(0.2))
-                            
-                            HStack {
-                                Text("Queue Size")
-                                    .font(AppTheme.caption())
-                                    .foregroundColor(.white.opacity(0.6))
-                                Spacer()
-                                Text("\(sessionCoordinator.queue.count) songs")
-                                    .font(AppTheme.body())
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding()
-                        .background(Color.white.opacity(0.05))
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -123,7 +41,7 @@ struct HostControlsView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.accent)
+                    .foregroundColor(AppTheme.accentPrimary)
                 }
             }
         }
@@ -142,14 +60,131 @@ struct HostControlsView: View {
             Text("This will immediately skip to the next song in the queue.")
         }
     }
+    
+    private var header: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(AppTheme.secondaryGradient)
+            
+            Text("Host Controls")
+                .font(AppTheme.largeTitle())
+                .foregroundColor(AppTheme.textPrimary)
+            
+            Text("Manage your session")
+                .font(AppTheme.body())
+                .foregroundColor(AppTheme.textSecondary)
+        }
+        .padding(.top, 40)
+        .padding(.bottom, 24)
+    }
+    
+    private var skipButton: some View {
+        Button(action: { showSkipConfirmation = true }) {
+            HStack(spacing: 14) {
+                Image(systemName: "forward.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(AppTheme.secondaryGradient)
+                
+                Text("Skip Current Track")
+                    .font(AppTheme.headline())
+                    .foregroundColor(AppTheme.textPrimary)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            .padding(18)
+            .background(AppTheme.surfaceCard)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            )
+            .cornerRadius(12)
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .disabled(sessionCoordinator.nowPlaying == nil)
+        .opacity(sessionCoordinator.nowPlaying == nil ? 0.6 : 1)
+    }
+    
+    private var lockToggle: some View {
+        HStack(spacing: 14) {
+            Image(systemName: isLocked ? "lock.fill" : "lock.open.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(AppTheme.primaryGradient)
+            
+            Text("Lock Queue")
+                .font(AppTheme.headline())
+                .foregroundColor(AppTheme.textPrimary)
+            
+            Spacer()
+            
+            Toggle("", isOn: $isLocked)
+                .labelsHidden()
+                .tint(AppTheme.accentPrimary)
+        }
+        .padding(18)
+        .background(AppTheme.surfaceCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+        .cornerRadius(12)
+        .onChange(of: isLocked) { _, newValue in
+            Task {
+                await sessionCoordinator.toggleLock(locked: newValue)
+            }
+        }
+    }
+    
+    private var sessionInfoCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Session Code")
+                    .font(AppTheme.caption())
+                    .foregroundColor(AppTheme.textMuted)
+                Spacer()
+                if let joinCode = sessionCoordinator.currentSession?.session.joinCode {
+                    Text(joinCode)
+                        .font(AppTheme.monoCode())
+                        .foregroundColor(AppTheme.textPrimary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(AppTheme.surfaceElevated)
+                        .cornerRadius(8)
+                }
+            }
+            
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 1)
+            
+            HStack {
+                Text("Queue Size")
+                    .font(AppTheme.caption())
+                    .foregroundColor(AppTheme.textMuted)
+                Spacer()
+                Text("\(sessionCoordinator.queue.count) songs")
+                    .font(AppTheme.body())
+                    .foregroundColor(AppTheme.textPrimary)
+            }
+        }
+        .padding(20)
+        .background(AppTheme.surfaceCard.opacity(0.6))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
+        .cornerRadius(12)
+    }
 }
 
 #Preview {
     HostControlsView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
-            authService: AuthService.mock)
-        ));
+            authService: AuthService.mock
+        )))
 }
-
-

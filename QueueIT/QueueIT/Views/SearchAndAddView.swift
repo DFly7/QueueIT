@@ -2,7 +2,7 @@
 //  SearchAndAddView.swift
 //  QueueIT
 //
-//  Enhanced search with instant add feedback and animations
+//  Search with instant add feedback
 //
 
 import SwiftUI
@@ -10,41 +10,28 @@ import SwiftUI
 struct SearchAndAddView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @Environment(\.dismiss) var dismiss
-    // Initialize it here!
     @StateObject private var searchVM = TrackSearchViewModel()
     
     @State private var justAddedTrackId: String?
     @State private var showSuccessAnimation = false
     
-    
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
+                AppTheme.ambientGradient
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Search bar
                     searchBar
                     
-                    // Results list
                     if searchVM.isLoading {
                         Spacer()
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.accentPrimary))
                         Spacer()
                     } else if let error = searchVM.errorMessage {
                         Spacer()
-                        VStack(spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle")
-                                .font(.system(size: 40))
-                                .foregroundColor(.red.opacity(0.7))
-                            Text(error)
-                                .font(AppTheme.body())
-                                .foregroundColor(.white.opacity(0.7))
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
+                        errorState(error)
                         Spacer()
                     } else if searchVM.results.isEmpty {
                         emptyState
@@ -53,7 +40,6 @@ struct SearchAndAddView: View {
                     }
                 }
                 
-                // Success overlay
                 if showSuccessAnimation {
                     successOverlay
                 }
@@ -63,33 +49,32 @@ struct SearchAndAddView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Text("Add Music")
                         .font(AppTheme.headline())
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.textPrimary)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.accent)
+                    .foregroundColor(AppTheme.accentPrimary)
                 }
             }
-            .onAppear{
+            .onAppear {
                 searchVM.setup(service: sessionCoordinator.apiService)
             }
         }
     }
     
-    // MARK: - Subviews
-    
     private var searchBar: some View {
         HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.white.opacity(0.6))
+                .font(.system(size: 18))
+                .foregroundColor(AppTheme.textMuted)
             
             TextField("Search for songs...", text: $searchVM.query)
-                .textFieldStyle(PlainTextFieldStyle())
+                .textFieldStyle(.plain)
                 .font(AppTheme.body())
-                .foregroundColor(.white)
+                .foregroundColor(AppTheme.textPrimary)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
                 .onSubmit {
@@ -102,74 +87,94 @@ struct SearchAndAddView: View {
                     searchVM.results = []
                 }) {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(AppTheme.textMuted)
                 }
             }
         }
-        .padding()
-        .background(Color.white.opacity(0.1))
+        .padding(16)
+        .background(AppTheme.surfaceCard)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
         .cornerRadius(12)
-        .padding()
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+    
+    private func errorState(_ message: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 44))
+                .foregroundColor(AppTheme.destructive.opacity(0.8))
+            
+            Text(message)
+                .font(AppTheme.body())
+                .foregroundColor(AppTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
     }
     
     private var emptyState: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 18) {
             Spacer()
             Image(systemName: "music.note.list")
-                .font(.system(size: 60))
-                .foregroundColor(.white.opacity(0.3))
+                .font(.system(size: 56))
+                .foregroundColor(.white.opacity(0.2))
             
             Text("Search for music")
                 .font(AppTheme.headline())
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(AppTheme.textSecondary)
             
             Text("Find songs to add to the queue")
                 .font(AppTheme.body())
-                .foregroundColor(.white.opacity(0.5))
+                .foregroundColor(AppTheme.textMuted)
             Spacer()
         }
     }
     
     private var resultsList: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVStack(spacing: 10) {
                 ForEach(searchVM.results) { track in
                     SearchResultCard(
                         track: track,
                         isAdded: justAddedTrackId == track.id,
-                        onAdd: {
-                            addTrack(track)
-                        }
+                        onAdd: { addTrack(track) }
                     )
                 }
             }
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
     }
     
     private var successOverlay: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color.black.opacity(0.5)
                 .ignoresSafeArea()
             
-            VStack(spacing: 16) {
+            VStack(spacing: 18) {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 70))
+                    .font(.system(size: 64))
                     .foregroundStyle(AppTheme.success)
                 
                 Text("Added to Queue!")
                     .font(AppTheme.headline())
                     .foregroundColor(.white)
             }
-            .padding(40)
-            .background(Color(.systemBackground).opacity(0.95))
-            .cornerRadius(20)
-            .shadow(radius: 20)
+            .padding(44)
+            .background(AppTheme.surfaceCard)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(AppTheme.success.opacity(0.4), lineWidth: 1)
+            )
+            .cornerRadius(24)
+            .shadow(color: AppTheme.success.opacity(0.2), radius: 24)
         }
         .transition(.scale.combined(with: .opacity))
     }
-    
-    // MARK: - Actions
     
     private func addTrack(_ track: Track) {
         justAddedTrackId = track.id
@@ -177,19 +182,16 @@ struct SearchAndAddView: View {
         Task {
             await sessionCoordinator.addSong(track: track)
             
-            // Show success animation
             withAnimation(AppTheme.bouncyAnimation) {
                 showSuccessAnimation = true
             }
             
-            // Hide after delay
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             
             withAnimation {
                 showSuccessAnimation = false
             }
             
-            // Clear the "added" state
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 justAddedTrackId = nil
             }
@@ -205,56 +207,53 @@ struct SearchResultCard: View {
     let onAdd: () -> Void
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Album art
+        HStack(spacing: 14) {
             if let imageUrl = track.imageUrl {
                 AsyncImage(url: imageUrl) { image in
                     image.resizable()
                 } placeholder: {
-                    Color.gray.opacity(0.2)
+                    Color.white.opacity(0.1)
                 }
-                .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 ZStack {
-                    Color.gray.opacity(0.2)
+                    Color.white.opacity(0.08)
                     Image(systemName: "music.note")
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.white.opacity(0.4))
                 }
-                .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             
-            // Track info
             VStack(alignment: .leading, spacing: 4) {
                 Text(track.name)
                     .font(AppTheme.body())
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textPrimary)
                     .lineLimit(1)
                 
                 Text(track.artists)
                     .font(AppTheme.caption())
-                    .foregroundColor(.white.opacity(0.6))
+                    .foregroundColor(AppTheme.textSecondary)
                     .lineLimit(1)
                 
                 HStack(spacing: 6) {
                     Text(track.album)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(AppTheme.textMuted)
                         .lineLimit(1)
                     
                     Text("•")
-                        .foregroundColor(.white.opacity(0.3))
+                        .foregroundColor(AppTheme.textMuted.opacity(0.6))
                     
                     Text(track.durationFormatted)
                         .font(.system(size: 11))
-                        .foregroundColor(.white.opacity(0.4))
+                        .foregroundColor(AppTheme.textMuted)
                 }
             }
             
             Spacer()
             
-            // Add button
             Button(action: onAdd) {
                 if isAdded {
                     Image(systemName: "checkmark.circle.fill")
@@ -267,19 +266,21 @@ struct SearchResultCard: View {
                 }
             }
             .disabled(isAdded)
+            .buttonStyle(ScaleButtonStyle())
         }
-        .padding()
-        .background(Color.white.opacity(0.05))
+        .padding(14)
+        .background(AppTheme.surfaceCard.opacity(0.8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+        )
         .cornerRadius(12)
-        .scaleEffect(isAdded ? 0.98 : 1.0)
+        .scaleEffect(isAdded ? 0.98 : 1)
         .animation(AppTheme.quickAnimation, value: isAdded)
     }
 }
 
 #Preview {
-    // SessionCoordinator.mock() handles creating the API and Auth services internally
     SearchAndAddView()
         .environmentObject(SessionCoordinator.mock())
 }
-
-

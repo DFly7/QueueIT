@@ -2,7 +2,7 @@
 //  JoinSessionView.swift
 //  QueueIT
 //
-//  Join an existing session with a code
+//  Join session with secret-code aesthetic
 //
 
 import SwiftUI
@@ -13,93 +13,99 @@ struct JoinSessionView: View {
     
     @State private var joinCode: String = ""
     @State private var isJoining: Bool = false
+    @FocusState private var isCodeFocused: Bool
     
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
+                AppTheme.ambientGradient
                     .ignoresSafeArea()
                 
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    // Icon and title
-                    VStack(spacing: 16) {
-                        Image(systemName: "person.2.wave.2.fill")
-                            .font(.system(size: 60))
-                            .foregroundStyle(AppTheme.secondaryGradient)
+                ScrollView {
+                    VStack(spacing: 32) {
+                        VStack(spacing: 20) {
+                            Image(systemName: "person.2.wave.2.fill")
+                                .font(.system(size: 56))
+                                .foregroundStyle(AppTheme.secondaryGradient)
+                            
+                            Text("Join the Party")
+                                .font(AppTheme.largeTitle())
+                                .foregroundColor(AppTheme.textPrimary)
+                            
+                            Text("Enter the code from your host")
+                                .font(AppTheme.body())
+                                .foregroundColor(AppTheme.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
+                        }
+                        .padding(.top, 24)
                         
-                        Text("Join the Party")
-                            .font(AppTheme.title())
-                            .foregroundColor(.white)
-                        
-                        Text("Enter the session code from your host")
-                            .font(AppTheme.body())
-                            .foregroundColor(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Join code input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Join Code")
-                            .font(AppTheme.caption())
-                            .foregroundColor(.white.opacity(0.7))
-                        
-                        TextField("Enter session code", text: $joinCode)
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(AppTheme.headline())
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.top, 16)
-                    
-                    // Error message
-                    if let error = sessionCoordinator.error {
-                        Text(error)
-                            .font(AppTheme.caption())
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Join button
-                    Button(action: joinSession) {
-                        if isJoining {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: AppTheme.buttonHeight)
-                        } else {
-                            Text("Join Session")
-                                .gradientButton(
-                                    gradient: AppTheme.secondaryGradient,
-                                    isEnabled: isValidJoinCode
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("SESSION CODE")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(AppTheme.textMuted)
+                                .tracking(1.2)
+                            
+                            TextField("Enter code", text: $joinCode)
+                                .textFieldStyle(.plain)
+                                .font(AppTheme.monoCode())
+                                .foregroundColor(AppTheme.textPrimary)
+                                .padding(18)
+                                .background(AppTheme.surfaceCard)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isCodeFocused ? AppTheme.accentSecondary.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1.5)
                                 )
+                                .cornerRadius(12)
+                                .autocapitalization(.characters)
+                                .disableAutocorrection(true)
+                                .focused($isCodeFocused)
                         }
-                    }
-                    .disabled(!isValidJoinCode || isJoining)
-                    .padding(.horizontal, 32)
-                    .padding(.top, 8)
-                    
-                    // QR Code scanner button (placeholder)
-                    Button(action: {
-                        // TODO: Implement QR code scanner
-                    }) {
-                        HStack {
-                            Image(systemName: "qrcode.viewfinder")
-                            Text("Scan QR Code")
+                        .padding(.horizontal, 24)
+                        
+                        if let error = sessionCoordinator.error {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(AppTheme.destructive)
+                                Text(error)
+                                    .font(AppTheme.caption())
+                                    .foregroundColor(AppTheme.destructive)
+                            }
+                            .padding(.horizontal, 24)
                         }
-                        .font(AppTheme.body())
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding()
+                        
+                        Button(action: joinSession) {
+                            if isJoining {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: AppTheme.buttonHeight)
+                            } else {
+                                Text("Join Session")
+                                    .gradientButton(
+                                        gradient: AppTheme.secondaryGradient,
+                                        isEnabled: isValidJoinCode
+                                    )
+                            }
+                        }
+                        .disabled(!isValidJoinCode || isJoining)
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        
+                        Button(action: { /* TODO: QR scanner */ }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "qrcode.viewfinder")
+                                Text("Scan QR Code")
+                                    .font(AppTheme.body())
+                            }
+                            .foregroundColor(AppTheme.textSecondary)
+                            .padding(.vertical, 14)
+                        }
+                        .padding(.top, 8)
+                        
+                        Spacer(minLength: 40)
                     }
-                    
-                    Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -108,7 +114,7 @@ struct JoinSessionView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.accent)
+                    .foregroundColor(AppTheme.accentPrimary)
                 }
             }
         }
@@ -139,5 +145,3 @@ struct JoinSessionView: View {
             authService: AuthService.mock
         )))
 }
-
-
