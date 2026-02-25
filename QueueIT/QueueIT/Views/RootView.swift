@@ -2,7 +2,7 @@
 //  RootView.swift
 //  QueueIT
 //
-//  Root coordinator that switches between Welcome and Session views
+//  Root coordinator with bold auth prompt
 //
 
 import SwiftUI
@@ -11,6 +11,8 @@ struct RootView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @State private var showingAuth = false
+    @State private var logoScale: CGFloat = 0.8
+    @State private var logoOpacity: Double = 0
     
     var body: some View {
         Group {
@@ -30,35 +32,60 @@ struct RootView: View {
     
     private var authPrompt: some View {
         ZStack {
-            AppTheme.darkGradient
+            AppTheme.background
                 .ignoresSafeArea()
             
-            VStack(spacing: 32) {
+            // Subtle grid pattern
+            GeometryReader { geo in
+                Path { path in
+                    let step: CGFloat = 40
+                    for x in stride(from: 0, to: geo.size.width, by: step) {
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                    }
+                    for y in stride(from: 0, to: geo.size.height, by: step) {
+                        path.move(to: CGPoint(x: 0, y: y))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: y))
+                    }
+                }
+                .stroke(AppTheme.textMuted.opacity(0.08), lineWidth: 0.5)
+            }
+            
+            VStack(spacing: AppTheme.spacingXL) {
                 Spacer()
                 
-                VStack(spacing: 16) {
-                    Image(systemName: "music.note.list")
-                        .font(.system(size: 80))
-                        .foregroundStyle(AppTheme.primaryGradient)
+                VStack(spacing: AppTheme.spacingM) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 88))
+                        .foregroundStyle(AppTheme.accent)
+                        .scaleEffect(logoScale)
+                        .opacity(logoOpacity)
                     
                     Text("QueueUp")
-                        .font(AppTheme.largeTitle())
-                        .foregroundColor(.white)
+                        .font(AppTheme.displayLarge())
+                        .foregroundColor(AppTheme.textPrimary)
                     
                     Text("Sign in to get started")
                         .font(AppTheme.body())
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(AppTheme.textSecondary)
                 }
                 
-                Button(action: {
-                    showingAuth = true
-                }) {
-                    Text("Sign In")
-                        .gradientButton(gradient: AppTheme.primaryGradient)
+                Button(action: { showingAuth = true }) {
+                    HStack(spacing: AppTheme.spacingS) {
+                        Image(systemName: "arrow.right.circle.fill")
+                        Text("Sign In")
+                    }
+                    .primaryButton()
                 }
-                .padding(.horizontal, 32)
+                .padding(.horizontal, AppTheme.spacingXL)
                 
                 Spacer()
+            }
+        }
+        .onAppear {
+            withAnimation(AppTheme.smoothAnimation) {
+                logoScale = 1
+                logoOpacity = 1
             }
         }
     }
@@ -72,5 +99,3 @@ struct RootView: View {
             authService: AuthService.mock
         )))
 }
-
-

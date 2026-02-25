@@ -2,7 +2,7 @@
 //  WelcomeView.swift
 //  QueueIT
 //
-//  Welcome screen with Create/Join session entry points
+//  Bold welcome with asymmetric layout and staggered entry
 //
 
 import SwiftUI
@@ -12,89 +12,110 @@ struct WelcomeView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @State private var showingCreateSession = false
     @State private var showingJoinSession = false
+    @State private var createOffset: CGFloat = 60
+    @State private var joinOffset: CGFloat = 60
+    @State private var headerOpacity: Double = 0
     
     var body: some View {
         ZStack {
-            // Animated gradient background
-            AppTheme.darkGradient
+            AppTheme.background
                 .ignoresSafeArea()
             
-            VStack(spacing: 40) {
+            GeometryReader { geo in
+                Path { path in
+                    let step: CGFloat = 48
+                    for x in stride(from: 0, to: geo.size.width + step, by: step) {
+                        path.move(to: CGPoint(x: x, y: 0))
+                        path.addLine(to: CGPoint(x: x, y: geo.size.height))
+                    }
+                }
+                .stroke(AppTheme.textMuted.opacity(0.06), lineWidth: 0.5)
+            }
+            
+            VStack(spacing: 0) {
                 Spacer()
                 
-                // Logo/Title area
-                VStack(spacing: 12) {
-                    Image(systemName: "music.note.list")
-                        .font(.system(size: 80))
-                        .foregroundStyle(AppTheme.primaryGradient)
+                // Header
+                VStack(spacing: AppTheme.spacingS) {
+                    Image(systemName: "waveform.circle.fill")
+                        .font(.system(size: 72))
+                        .foregroundStyle(AppTheme.accent)
+                        .opacity(headerOpacity)
                     
                     Text("QueueUp")
-                        .font(AppTheme.largeTitle())
-                        .foregroundColor(.white)
+                        .font(AppTheme.display())
+                        .foregroundColor(AppTheme.textPrimary)
+                        .opacity(headerOpacity)
                     
                     Text("Collaborative music sessions")
                         .font(AppTheme.body())
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(AppTheme.textSecondary)
+                        .opacity(headerOpacity)
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, AppTheme.spacingXL)
                 
-                // Main action buttons
-                VStack(spacing: 16) {
+                // Action buttons - asymmetric layout
+                VStack(spacing: AppTheme.spacingM) {
                     Button(action: {
-                        showingCreateSession = true
+                        withAnimation(AppTheme.quickAnimation) { showingCreateSession = true }
                     }) {
-                        HStack {
+                        HStack(spacing: AppTheme.spacingS) {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title2)
                             Text("Create Session")
                         }
-                        .gradientButton(gradient: AppTheme.primaryGradient)
+                        .primaryButton()
                     }
-                    .scaleEffect(showingCreateSession ? 0.95 : 1.0)
+                    .offset(x: createOffset)
+                    .padding(.leading, AppTheme.spacingM)
+                    .padding(.trailing, AppTheme.spacingXL)
                     
                     Button(action: {
-                        showingJoinSession = true
+                        withAnimation(AppTheme.quickAnimation) { showingJoinSession = true }
                     }) {
-                        HStack {
+                        HStack(spacing: AppTheme.spacingS) {
                             Image(systemName: "person.2.fill")
                                 .font(.title2)
                             Text("Join Session")
                         }
-                        .gradientButton(gradient: AppTheme.secondaryGradient)
+                        .secondaryButton()
                     }
-                    .scaleEffect(showingJoinSession ? 0.95 : 1.0)
+                    .offset(x: -joinOffset)
+                    .padding(.leading, AppTheme.spacingXL)
+                    .padding(.trailing, AppTheme.spacingM)
                 }
-                .padding(.horizontal, 32)
+                .padding(.bottom, AppTheme.spacingXL)
                 
                 Spacer()
                 
-                // User info (if authenticated)
+                // User footer
                 if let user = authService.currentUser {
-                    VStack(spacing: 8) {
+                    VStack(spacing: AppTheme.spacingS) {
                         Text("Signed in as")
                             .font(AppTheme.caption())
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(AppTheme.textMuted)
                         Text(user.username ?? "User")
-                            .font(AppTheme.body())
-                            .foregroundColor(.white)
+                            .font(AppTheme.headline())
+                            .foregroundColor(AppTheme.textPrimary)
                         
                         Button("Sign Out") {
                             authService.signOut()
                         }
                         .font(AppTheme.caption())
                         .foregroundColor(AppTheme.accent)
-                        .padding(.top, 4)
+                        .padding(.top, AppTheme.spacingXS)
                     }
-                    .padding(.bottom, 32)
+                    .padding(.bottom, AppTheme.spacingXL)
                 }
-                else {
-                    Button("Sign Out") {
-                        authService.signOut()
-                    }
-                    .font(AppTheme.caption())
-                    .foregroundColor(AppTheme.accent)
-                    .padding(.top, 4)
-                }
+            }
+        }
+        .onAppear {
+            withAnimation(AppTheme.smoothAnimation) {
+                headerOpacity = 1
+                createOffset = 0
+            }
+            withAnimation(AppTheme.smoothAnimation.delay(0.1)) {
+                joinOffset = 0
             }
         }
         .sheet(isPresented: $showingCreateSession) {
@@ -109,8 +130,6 @@ struct WelcomeView: View {
 }
 
 #Preview {
-    // This works because we are just calling .mock()
-    // The function internals handle the @MainActor logic safely
     WelcomeView()
         .environmentObject(AuthService.mock)
         .environmentObject(SessionCoordinator.mock())
