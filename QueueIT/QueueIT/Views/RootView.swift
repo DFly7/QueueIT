@@ -2,7 +2,7 @@
 //  RootView.swift
 //  QueueIT
 //
-//  Root coordinator that switches between Welcome and Session views
+//  Root coordinator with Neon Lounge auth prompt
 //
 
 import SwiftUI
@@ -11,6 +11,7 @@ struct RootView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @State private var showingAuth = false
+    @State private var appeared = false
     
     var body: some View {
         Group {
@@ -30,35 +31,57 @@ struct RootView: View {
     
     private var authPrompt: some View {
         ZStack {
-            AppTheme.darkGradient
-                .ignoresSafeArea()
+            NeonBackground(showGrid: false)
             
-            VStack(spacing: 32) {
+            VStack(spacing: 0) {
                 Spacer()
                 
-                VStack(spacing: 16) {
-                    Image(systemName: "music.note.list")
-                        .font(.system(size: 80))
-                        .foregroundStyle(AppTheme.primaryGradient)
+                VStack(spacing: 24) {
+                    ZStack {
+                        VinylRing(size: 140, opacity: 0.2)
+                        VinylRing(size: 100, opacity: 0.15)
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.system(size: 72))
+                            .foregroundStyle(AppTheme.primaryGradient)
+                            .symbolEffect(.pulse, options: .repeating)
+                    }
+                    .scaleEffect(appeared ? 1 : 0.8)
+                    .opacity(appeared ? 1 : 0)
                     
-                    Text("QueueUp")
-                        .font(AppTheme.largeTitle())
-                        .foregroundColor(.white)
-                    
-                    Text("Sign in to get started")
-                        .font(AppTheme.body())
-                        .foregroundColor(.white.opacity(0.7))
+                    VStack(spacing: 8) {
+                        Text("QueueUp")
+                            .font(AppTheme.displayTitle())
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.white, .white.opacity(0.9)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                        
+                        Text("Sign in to start the party")
+                            .font(AppTheme.body())
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    .offset(y: appeared ? 0 : 20)
+                    .opacity(appeared ? 1 : 0)
                 }
+                .padding(.bottom, 48)
                 
-                Button(action: {
-                    showingAuth = true
-                }) {
+                Button(action: { showingAuth = true }) {
                     Text("Sign In")
-                        .gradientButton(gradient: AppTheme.primaryGradient)
+                        .neonButton(gradient: AppTheme.primaryGradient)
                 }
-                .padding(.horizontal, 32)
+                .padding(.horizontal, AppTheme.spacingXl)
+                .offset(y: appeared ? 0 : 30)
+                .opacity(appeared ? 1 : 0)
                 
                 Spacer()
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                appeared = true
             }
         }
     }
@@ -72,5 +95,3 @@ struct RootView: View {
             authService: AuthService.mock
         )))
 }
-
-

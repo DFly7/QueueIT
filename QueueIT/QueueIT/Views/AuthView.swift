@@ -1,15 +1,21 @@
+//
+//  AuthView.swift
+//  QueueIT
+//
+//  Auth screen with Neon Lounge styling
+//
+
 import SwiftUI
 import AuthenticationServices
-import CryptoKit // Required for Apple Sign In helper
+import CryptoKit
 
 struct AuthView: View {
     @EnvironmentObject var authService: AuthService
     @State private var authMode: AuthMode = .signIn
     @State private var email = ""
     @State private var password = ""
-    
-    // Apple Sign In Helper State
     @State var currentNonce: String?
+    @State private var appeared = false
 
     enum AuthMode: String, CaseIterable {
         case signIn = "Sign In"
@@ -19,104 +25,126 @@ struct AuthView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.darkGradient.ignoresSafeArea()
+            NeonBackground(showGrid: false)
             
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Image(systemName: "music.note.list")
-                            .font(.system(size: 60))
-                            .foregroundStyle(AppTheme.primaryGradient)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: AppTheme.spacingLg) {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            VinylRing(size: 100, opacity: 0.2)
+                            Image(systemName: "waveform.circle.fill")
+                                .font(.system(size: 48))
+                                .foregroundStyle(AppTheme.primaryGradient)
+                        }
+                        .scaleEffect(appeared ? 1 : 0.8)
+                        .opacity(appeared ? 1 : 0)
+                        
                         Text("QueueUp")
-                            .font(.largeTitle.bold())
+                            .font(AppTheme.title())
                             .foregroundColor(.white)
                     }
-                    .padding(.top, 40)
-                    .padding(.bottom, 20)
+                    .padding(.top, 32)
+                    .padding(.bottom, 24)
 
-                    // Mode Picker
                     Picker("Mode", selection: $authMode) {
                         ForEach(AuthMode.allCases, id: \.self) { mode in
                             Text(mode.rawValue).tag(mode)
                         }
                     }
                     .pickerStyle(.segmented)
-                    .padding(.horizontal)
+                    .padding(.horizontal, AppTheme.spacingXl)
 
-                    // Input Fields
-                    VStack(spacing: 16) {
+                    VStack(spacing: 14) {
                         TextField("Email", text: $email)
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(10)
+                            .font(AppTheme.body())
                             .foregroundColor(.white)
+                            .padding(AppTheme.spacing)
+                            .background(Color.white.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            )
+                            .cornerRadius(AppTheme.cornerRadiusSm)
 
                         if authMode != .magicLink {
                             SecureField("Password", text: $password)
                                 .textContentType(authMode == .register ? .newPassword : .password)
-                                .padding()
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(10)
+                                .font(AppTheme.body())
                                 .foregroundColor(.white)
+                                .padding(AppTheme.spacing)
+                                .background(Color.white.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                                .cornerRadius(AppTheme.cornerRadiusSm)
                         }
                         
                         if let error = authService.errorMessage {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(AppTheme.coral)
+                                Text(error)
+                                    .font(AppTheme.caption())
+                                    .foregroundColor(AppTheme.coral)
+                                    .multilineTextAlignment(.center)
+                            }
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, AppTheme.spacingXl)
 
-                    // Primary Action Button
                     Button(action: handleAction) {
                         if authService.isLoading {
                             ProgressView()
-                                .tint(.white)
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: AppTheme.buttonHeight)
                         } else {
                             Text(buttonTitle)
-                                .bold()
-                                .frame(maxWidth: .infinity)
+                                .neonButton(
+                                    gradient: AppTheme.primaryGradient,
+                                    isEnabled: !email.isEmpty && (authMode == .magicLink || !password.isEmpty)
+                                )
                         }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.accent)
-                    .padding(.horizontal)
                     .disabled(email.isEmpty || (authMode != .magicLink && password.isEmpty))
+                    .padding(.horizontal, AppTheme.spacingXl)
 
-                    // Divider
-                    HStack {
-                        Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
-                        Text("OR").font(.caption).foregroundColor(.gray)
-                        Rectangle().frame(height: 1).foregroundColor(.gray.opacity(0.3))
+                    HStack(spacing: 16) {
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.white.opacity(0.15))
+                        Text("OR")
+                            .font(AppTheme.caption())
+                            .foregroundColor(.white.opacity(0.4))
+                        Rectangle()
+                            .frame(height: 1)
+                            .foregroundColor(.white.opacity(0.15))
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, AppTheme.spacingXl)
+                    .padding(.vertical, 8)
 
-                    // Social Login Section
-                    VStack(spacing: 16) {
-                        // Google Button
+                    VStack(spacing: 12) {
                         Button(action: {
                             Task { await authService.signInWithGoogle() }
                         }) {
-                            HStack {
-                                Image(systemName: "globe") // Replace with Google Icon asset
+                            HStack(spacing: 12) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 18))
                                 Text("Continue with Google")
+                                    .font(AppTheme.headline())
                             }
-                            .bold()
                             .foregroundColor(.black)
                             .frame(maxWidth: .infinity)
-                            .padding()
+                            .frame(height: 52)
                             .background(Color.white)
-                            .cornerRadius(10)
+                            .cornerRadius(AppTheme.cornerRadius)
                         }
+                        .buttonStyle(.plain)
                         
-                        // Apple Button (Native)
                         SignInWithAppleButton(
                             onRequest: { request in
                                 let nonce = randomNonceString()
@@ -129,17 +157,21 @@ struct AuthView: View {
                             }
                         )
                         .signInWithAppleButtonStyle(.white)
-                        .frame(height: 50)
-                        .cornerRadius(10)
+                        .frame(height: 52)
+                        .cornerRadius(AppTheme.cornerRadius)
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, AppTheme.spacingXl)
+                    .padding(.bottom, 40)
                 }
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                appeared = true
             }
         }
     }
 
-    // MARK: - Helpers
-    
     var buttonTitle: String {
         switch authMode {
         case .signIn: return "Log In"
@@ -161,7 +193,6 @@ struct AuthView: View {
         }
     }
     
-    // Apple Sign In Logic
     func handleAppleCompletion(_ result: Result<ASAuthorization, Error>) {
         switch result {
         case .success(let authResults):
@@ -178,7 +209,6 @@ struct AuthView: View {
         }
     }
     
-    // Standard Helper to generate Nonce for Apple Sign In
     private func randomNonceString(length: Int = 32) -> String {
         precondition(length > 0)
         var randomBytes = [UInt8](repeating: 0, count: length)
