@@ -206,8 +206,7 @@ extension AuthService {
         service.isAuthenticated = true
         service.currentUser = User(
             id: UUID(),
-            email: "preview@queueit.com",
-            username: "Preview Host",
+            username: "Preview Host", email: "preview@queueit.com",
             avatarUrl: "https://i.pravatar.cc/300"
         )
         

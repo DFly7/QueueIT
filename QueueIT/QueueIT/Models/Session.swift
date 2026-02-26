@@ -27,9 +27,19 @@ struct QueuedSongResponse: Codable, Identifiable, Hashable {
     let id: UUID
     let status: String
     let addedAt: Date
-    let votes: Int
+    var votes: Int
     let song: Track
     let addedBy: User
+    
+    var isPending: Bool {
+        status == "pending"
+    }
+    
+    func withOptimisticVotes(_ newVotes: Int) -> QueuedSongResponse {
+        var copy = self
+        copy.votes = newVotes
+        return copy
+    }
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -44,8 +54,27 @@ struct QueuedSongResponse: Codable, Identifiable, Hashable {
 // MARK: - CurrentSessionResponse (main session state)
 struct CurrentSessionResponse: Codable {
     let session: SessionBase
-    let currentSong: QueuedSongResponse?
-    let queue: [QueuedSongResponse]
+    var currentSong: QueuedSongResponse?
+    var queue: [QueuedSongResponse]
+    
+    func withUpdatedVotes(for songId: UUID, votes: Int) -> CurrentSessionResponse {
+        var copy = self
+        
+        // Update current song if it matches
+        if copy.currentSong?.id == songId {
+            copy.currentSong = copy.currentSong?.withOptimisticVotes(votes)
+        }
+        
+        // Update queue item if it matches
+        copy.queue = copy.queue.map { item in
+            if item.id == songId {
+                return item.withOptimisticVotes(votes)
+            }
+            return item
+        }
+        
+        return copy
+    }
     
     enum CodingKeys: String, CodingKey {
         case session

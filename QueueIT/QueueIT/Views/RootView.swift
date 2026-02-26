@@ -27,6 +27,12 @@ struct RootView: View {
             AuthView()
                 .environmentObject(authService)
         }
+        .onChange(of: authService.isAuthenticated) { _, isAuthenticated in
+            if isAuthenticated && showingAuth {
+                // Dismiss auth sheet on successful login
+                showingAuth = false
+            }
+        }
     }
     
     private var authPrompt: some View {

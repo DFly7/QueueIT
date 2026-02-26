@@ -24,7 +24,7 @@ struct SessionView: View {
                             .opacity(appeared ? 1 : 0)
                             .offset(y: appeared ? 0 : 10)
                         
-                        if let nowPlaying = sessionCoordinator.nowPlaying {
+                        if let nowPlaying = sessionCoordinator.nowPlayingWithOptimisticVotes {
                             NowPlayingCard(queuedSong: nowPlaying)
                         } else {
                             emptyNowPlaying
