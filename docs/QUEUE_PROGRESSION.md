@@ -270,13 +270,23 @@ song_finished_complete session_id=... next_song_id=...
 
 1. **Host device required**: Only the host device plays music. If the host leaves or loses connection, playback stops.
 
-2. **No real-time sync**: Other users don't see queue updates in real-time (no WebSocket implementation yet). They need to refresh manually or wait for next API call.
+2. **Apple Music only**: Currently only supports Apple Music playback. Spotify tracks are searched on Apple Music.
 
-3. **Apple Music only**: Currently only supports Apple Music playback. Spotify tracks are searched on Apple Music.
+## Real-time Synchronization
+
+QueueIT now uses **Supabase Realtime** for multi-user synchronization. When any user in a session:
+- Votes on a song
+- Adds a song to the queue
+- When the current track changes
+
+All other users receive updates automatically via WebSocket from Supabase.
+
+See `supabase/README.md` for detailed Realtime configuration and `RealtimeService.swift` for the iOS implementation.
 
 ## Future Improvements
 
-- [ ] WebSocket real-time updates for all session members
-- [ ] Supabase Realtime subscription for queue changes
+- [x] ~~WebSocket real-time updates for all session members~~ (Implemented via Supabase Realtime)
+- [x] ~~Supabase Realtime subscription for queue changes~~ (Implemented)
 - [ ] Playback failure handling and retry
 - [ ] Multiple host support / host transfer
+- [ ] Parse Realtime payloads directly instead of full refresh (optimization)

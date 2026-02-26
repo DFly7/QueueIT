@@ -2,12 +2,18 @@
 //  WebSocketService.swift
 //  QueueIT
 //
-//  WebSocket client for real-time queue/vote/now-playing updates
+//  DEPRECATED: This file is no longer used.
+//  Real-time updates now use Supabase Realtime via RealtimeService.swift
+//
+//  This was the original WebSocket client for real-time queue/vote/now-playing updates
+//  that connected to a custom backend WebSocket endpoint. It has been replaced by
+//  Supabase's built-in Realtime feature which automatically broadcasts database changes.
 //
 
 import Foundation
 import Combine
 
+@available(*, deprecated, message: "Use RealtimeService instead for Supabase Realtime subscriptions")
 @MainActor
 class WebSocketService: NSObject, ObservableObject {
     @Published var isConnected: Bool = false

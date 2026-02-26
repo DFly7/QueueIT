@@ -29,7 +29,7 @@ class SessionCoordinator: ObservableObject {
     private var pendingVoteValues: [UUID: Int] = [:]  // Queued vote values to send after current in-flight completes
     
     public let apiService: QueueAPIService
-    private var webSocketService: WebSocketService?
+    private var realtimeService: RealtimeService?
     private var cancellables = Set<AnyCancellable>()
     
     // Computed properties for easier access
@@ -104,7 +104,7 @@ class SessionCoordinator: ObservableObject {
             let session = try await apiService.createSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
-            connectWebSocket()
+            connectRealtime()
         } catch {
             self.error = error.localizedDescription
         }
@@ -119,7 +119,7 @@ class SessionCoordinator: ObservableObject {
             let session = try await apiService.joinSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
-            connectWebSocket()
+            connectRealtime()
         } catch {
             self.error = error.localizedDescription
         }
@@ -160,7 +160,7 @@ class SessionCoordinator: ObservableObject {
         
         do {
             try await apiService.leaveSession()
-            disconnectWebSocket()
+            disconnectRealtime()
             if isHost {
                 MusicManager.shared.stop()
             }
@@ -178,25 +178,26 @@ class SessionCoordinator: ObservableObject {
         }
     }
     
-    // MARK: - WebSocket Management
+    // MARK: - Realtime Management
     
-    private func connectWebSocket() {
+    private func connectRealtime() {
         guard let sessionId = currentSession?.session.id else { return }
         
-        // Initialize WebSocket service if needed
-        if webSocketService == nil {
-            webSocketService = WebSocketService(
-                baseURL: URL(string: "http://localhost:8000")!, // TODO: Use config
-                authService: apiService.authService,
-                sessionCoordinator: self
-            )
+        // Initialize Realtime service if needed
+        if realtimeService == nil {
+            realtimeService = RealtimeService(authService: apiService.authService)
+            realtimeService?.setSessionCoordinator(self)
         }
         
-        webSocketService?.connect(sessionId: sessionId)
+        Task {
+            await realtimeService?.subscribe(to: sessionId)
+        }
     }
     
-    private func disconnectWebSocket() {
-        webSocketService?.disconnect()
+    private func disconnectRealtime() {
+        Task {
+            await realtimeService?.unsubscribe()
+        }
     }
 
     // MARK: - Queue Management
