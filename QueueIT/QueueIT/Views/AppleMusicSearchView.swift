@@ -19,8 +19,7 @@ struct AppleMusicSearchView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
-                    .ignoresSafeArea()
+                NeonBackground(showGrid: false)
                 
                 VStack(spacing: 0) {
                     // Search bar
