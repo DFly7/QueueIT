@@ -8,13 +8,14 @@
 import Foundation
 
 struct AddSongRequest: Codable {
-    let id: String // spotify_id
-    let isrc: String // isrc_identifier
+    let id: String
+    let isrc: String
     let name: String
-    let artists: String // artist
+    let artists: String
     let album: String
-    let durationMs: Int // durationMSs
-    let imageUrl: String // URL as string
+    let durationMs: Int
+    let imageUrl: String
+    let source: String
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -24,9 +25,10 @@ struct AddSongRequest: Codable {
         case album
         case durationMs = "duration_ms"
         case imageUrl = "image_url"
+        case source
     }
     
-    /// Create an AddSongRequest from a Track search result
+    /// Create an AddSongRequest from a Track model
     init(from track: Track) {
         self.id = track.id
         self.isrc = track.isrc ?? ""
@@ -35,6 +37,7 @@ struct AddSongRequest: Codable {
         self.album = track.album
         self.durationMs = track.durationMs
         self.imageUrl = track.imageUrl?.absoluteString ?? ""
+        self.source = track.source.rawValue
     }
 }
 

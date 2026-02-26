@@ -12,13 +12,14 @@ from app.schemas.user import User
 
 def _map_queue_item(item: Dict[str, Any]) -> QueuedSongResponse:
     track = TrackOut(
-        spotify_id=item["song"]["spotify_id"],
+        external_id=item["song"]["external_id"],
         isrc_identifier=item["song"]["isrc_identifier"],
         name=item["song"]["name"],
         artist=item["song"]["artist"],
         album=item["song"]["album"],
         durationMSs=item["song"]["durationMSs"],
         image_url=item["song"]["image_url"],
+        source=item["song"].get("source") or "spotify",
     )
     added_by = User(id=item["added_by"]["id"], username=item["added_by"].get("username"))
     return QueuedSongResponse(
@@ -46,20 +47,28 @@ def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSongReques
 
     # Ensure song exists (upsert)
     song_repo.upsert_song(
-        spotify_id=request.id,
+        external_id=request.id,
         name=request.name,
         artist=request.artists,
         album=request.album,
         durationMSs=request.duration_ms,
         image_url=str(request.image_url),
         isrc_identifier=request.isrc,
+        source=request.source,
     )
 
     queued = queue_repo.add_song_to_queue(
         session_id=session_row["id"],
         added_by_id=user_id,
-        song_spotify_id=request.id,
+        song_external_id=request.id,
     )
+
+    # Auto-play if no song is currently playing
+    if not session_row.get("current_song"):
+        session_repo.set_current_song(
+            session_id=session_row["id"],
+            queued_song_id=queued["id"]
+        )
 
     # Build enriched response using list_session_queue to reuse joins
     queue_items = queue_repo.list_session_queue(session_row["id"])

@@ -7,10 +7,15 @@
 
 import Foundation
 import Combine
+import MusicKit
 
 @MainActor
 class SessionCoordinator: ObservableObject {
-    @Published var currentSession: CurrentSessionResponse?
+    @Published var currentSession: CurrentSessionResponse? {
+        didSet {
+            handleSessionChange(oldValue: oldValue, newValue: currentSession)
+        }
+    }
     @Published var isLoading: Bool = false
     @Published var error: String?
     
@@ -36,7 +41,10 @@ class SessionCoordinator: ObservableObject {
     }
     
     var queue: [QueuedSongResponse] {
-        currentSession?.queue ?? []
+        let q = currentSession?.queue ?? []
+        let currentId = currentSession?.currentSong?.id
+        // Only show songs that are "queued" (not played or skipped)
+        return q.filter { $0.id != currentId && $0.status == "queued" }
     }
     
     init(apiService: QueueAPIService) {
@@ -89,6 +97,9 @@ class SessionCoordinator: ObservableObject {
         do {
             try await apiService.leaveSession()
             disconnectWebSocket()
+            if isHost {
+                MusicManager.shared.stop()
+            }
             currentSession = nil
             error = nil
         } catch {
@@ -174,6 +185,72 @@ class SessionCoordinator: ObservableObject {
             self.error = error.localizedDescription
         }
     }
+    
+    // MARK: - Music Playback Handling
+    
+    private func handleSessionChange(oldValue: CurrentSessionResponse?, newValue: CurrentSessionResponse?) {
+        // Only host should play music
+        guard isHost else { return }
+        
+        let oldSongId = oldValue?.currentSong?.id
+        let newSongId = newValue?.currentSong?.id
+        
+        if oldSongId != newSongId {
+            if let newSong = newValue?.currentSong {
+                Task {
+                    await playTrack(newSong.song)
+                }
+            } else {
+                MusicManager.shared.stop()
+            }
+        }
+    }
+    
+    private func playTrack(_ track: Track) async {
+        if !MusicManager.shared.isAuthorized {
+            await MusicManager.shared.requestAccess()
+        }
+        
+        guard MusicManager.shared.canPlayMusic else {
+            print("Cannot play music: Not authorized or no subscription")
+            return
+        }
+        
+        // If it's an Apple Music track, play directly by catalog ID (no search needed!)
+        if track.source == .appleMusic {
+            print("🎵 Playing Apple Music track by catalog ID: \(track.id)")
+            await MusicManager.shared.playByCatalogID(track.id) { [weak self] in
+                Task { @MainActor in
+                    await self?.handleSongFinished()
+                }
+            }
+        } else {
+            // Fallback: Search by artist + song name for Spotify tracks
+            print("🔍 Searching Apple Music for Spotify track: \(track.name)")
+            let query = "\(track.name) \(track.artists)"
+            if let appleMusicSong = await MusicManager.shared.searchForSong(query: query) {
+                await MusicManager.shared.play(song: appleMusicSong) { [weak self] in
+                    Task { @MainActor in
+                        await self?.handleSongFinished()
+                    }
+                }
+            } else {
+                print("❌ Could not find song on Apple Music: \(query)")
+            }
+        }
+    }
+    
+    private func handleSongFinished() async {
+        guard isHost else { return }
+        
+        do {
+            try await apiService.songFinished()
+            // Refresh to get the next song
+            await refreshSession()
+        } catch {
+            print("Failed to mark song as finished: \(error)")
+        }
+    }
 }
 
 
@@ -193,3 +270,4 @@ extension SessionCoordinator {
         return SessionCoordinator(apiService: api)
     }
 }
+

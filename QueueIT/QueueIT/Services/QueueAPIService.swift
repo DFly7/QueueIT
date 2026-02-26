@@ -164,6 +164,14 @@ class QueueAPIService {
         let _: [String: Bool] = try await performRequest(request, responseType: [String: Bool].self)
     }
     
+    func songFinished() async throws {
+        let request = try await createRequest(
+            path: "/api/v1/sessions/song_finished",
+            method: "POST"
+        )
+        let _: [String: Bool] = try await performRequest(request, responseType: [String: Bool].self)
+    }
+    
     // MARK: - Queue & Songs API
     
     func addSong(_ request: AddSongRequest) async throws -> QueuedSongResponse {
