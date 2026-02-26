@@ -57,7 +57,7 @@ struct CreateSessionView: View {
                                         .stroke(isCodeFocused ? AppTheme.accentPrimary.opacity(0.6) : Color.white.opacity(0.08), lineWidth: 1.5)
                                 )
                                 .cornerRadius(12)
-                                .autocapitalization(.characters)
+                                .autocapitalization(.allCharacters)
                                 .disableAutocorrection(true)
                                 .focused($isCodeFocused)
                         }
