@@ -71,6 +71,23 @@ class SessionRepository:
             raise ValueError("Failed to update current song for session")
         return response.data[0]
 
+    def set_current_song_if_empty(self, *, session_id: str, queued_song_id: str) -> bool:
+        """
+        Atomically sets current_song only if it's currently NULL.
+        Returns True if the update was applied, False if current_song was already set.
+        This prevents race conditions when multiple songs are added concurrently.
+        """
+        response = (
+            self.client
+            .from_("sessions")
+            .update({"current_song": queued_song_id}, returning="representation")
+            .eq("id", session_id)
+            .is_("current_song", "null")
+            .execute()
+        )
+        # If response.data is empty, it means the WHERE clause didn't match (current_song wasn't null)
+        return bool(response.data)
+
     # --- Helpers ---
     def get_current_for_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """
