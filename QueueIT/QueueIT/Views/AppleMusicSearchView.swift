@@ -15,6 +15,9 @@ struct AppleMusicSearchView: View {
     @State private var searchQuery: String = ""
     @State private var searchResults: [Song] = []
     @State private var isSearching: Bool = false
+    @State private var addingSongIds: Set<MusicItemID> = []
+    @State private var addedSongIds: Set<MusicItemID> = []
+    @State private var errorMessage: String?
     
     var body: some View {
         NavigationView {
@@ -51,6 +54,19 @@ struct AppleMusicSearchView: View {
                     .cornerRadius(12)
                     .padding()
                     
+                    // Error message
+                    if let error = errorMessage {
+                        HStack {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(AppTheme.coral)
+                            Text(error)
+                                .font(AppTheme.caption())
+                                .foregroundColor(AppTheme.coral)
+                        }
+                        .padding(.horizontal)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                    
                     // Results
                     if isSearching {
                         ProgressView()
@@ -64,7 +80,11 @@ struct AppleMusicSearchView: View {
                         ScrollView {
                             LazyVStack(spacing: 12) {
                                 ForEach(searchResults, id: \.id) { song in
-                                    AppleMusicResultRow(song: song) {
+                                    AppleMusicResultRow(
+                                        song: song,
+                                        isAdding: addingSongIds.contains(song.id),
+                                        isAdded: addedSongIds.contains(song.id)
+                                    ) {
                                         Task {
                                             await addSong(song)
                                         }
@@ -96,36 +116,93 @@ struct AppleMusicSearchView: View {
     }
     
     private func addSong(_ song: Song) async {
+        guard !addingSongIds.contains(song.id) && !addedSongIds.contains(song.id) else { return }
+        
+        // Clear any previous error
+        withAnimation {
+            errorMessage = nil
+        }
+        
+        // Mark as adding
+        addingSongIds.insert(song.id)
+        
         let track = song.toTrack()
-        await sessionCoordinator.addSong(track: track)
-        dismiss()
+        let success = await sessionCoordinator.addSong(track: track)
+        
+        // Remove from adding state
+        addingSongIds.remove(song.id)
+        
+        if success {
+            // Mark as successfully added with animation
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                addedSongIds.insert(song.id)
+            }
+            
+            // Provide haptic feedback
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+        } else {
+            // Show error
+            withAnimation {
+                errorMessage = sessionCoordinator.error ?? "Failed to add song"
+            }
+            
+            // Clear error after a few seconds
+            Task {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                withAnimation {
+                    if errorMessage != nil {
+                        errorMessage = nil
+                    }
+                }
+            }
+        }
     }
 }
 
 struct AppleMusicResultRow: View {
     let song: Song
+    var isAdding: Bool = false
+    var isAdded: Bool = false
     let onAdd: () -> Void
     
     var body: some View {
         HStack(spacing: 12) {
             // Album art
-            if let artwork = song.artwork {
-                AsyncImage(url: artwork.url(width: 60, height: 60)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
+            ZStack {
+                if let artwork = song.artwork {
+                    AsyncImage(url: artwork.url(width: 60, height: 60)) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Color.white.opacity(0.1)
+                    }
+                    .frame(width: 60, height: 60)
+                    .cornerRadius(8)
+                } else {
                     Color.white.opacity(0.1)
+                        .frame(width: 60, height: 60)
+                        .cornerRadius(8)
                 }
-                .frame(width: 60, height: 60)
-                .cornerRadius(8)
+                
+                // Success checkmark overlay
+                if isAdded {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(AppTheme.neonCyan.opacity(0.9))
+                        .frame(width: 60, height: 60)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             
             // Song info
             VStack(alignment: .leading, spacing: 4) {
                 Text(song.title)
                     .font(AppTheme.body())
-                    .foregroundColor(.white)
+                    .foregroundColor(isAdded ? AppTheme.neonCyan : .white)
                     .lineLimit(1)
                 
                 Text(song.artistName)
@@ -133,7 +210,12 @@ struct AppleMusicResultRow: View {
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
                 
-                if let album = song.albumTitle {
+                if isAdded {
+                    Text("Added to queue!")
+                        .font(AppTheme.monoSmall())
+                        .foregroundColor(AppTheme.neonCyan)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if let album = song.albumTitle {
                     Text(album)
                         .font(AppTheme.caption())
                         .foregroundColor(.white.opacity(0.4))
@@ -143,16 +225,37 @@ struct AppleMusicResultRow: View {
             
             Spacer()
             
-            // Add button
-            Button(action: onAdd) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(AppTheme.accent)
+            // Add button / Loading / Added state
+            Group {
+                if isAdded {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(AppTheme.neonCyan)
+                        .transition(.scale.combined(with: .opacity))
+                } else if isAdding {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.neonCyan))
+                        .scaleEffect(0.9)
+                } else {
+                    Button(action: onAdd) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(AppTheme.accent)
+                    }
+                }
             }
+            .frame(width: 32, height: 32)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAdding)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isAdded)
         }
         .padding()
-        .background(Color.white.opacity(0.05))
+        .background(isAdded ? AppTheme.neonCyan.opacity(0.08) : Color.white.opacity(0.05))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isAdded ? AppTheme.neonCyan.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
         .cornerRadius(12)
+        .animation(.easeInOut(duration: 0.2), value: isAdded)
     }
 }
 

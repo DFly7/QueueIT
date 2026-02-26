@@ -21,6 +21,14 @@ struct User: Identifiable, Codable, Hashable {
         case username
         case avatarUrl = "avatar_url"
     }
+    
+    // Convenience initializer for optimistic UI
+    init(id: UUID, username: String?, email: String? = nil, avatarUrl: String? = nil) {
+        self.id = id
+        self.email = email
+        self.username = username
+        self.avatarUrl = avatarUrl
+    }
 }
 
 

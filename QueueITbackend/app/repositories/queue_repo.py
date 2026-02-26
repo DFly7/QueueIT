@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Optional, Dict, Any, List, Tuple
 
 from supabase import Client
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class QueueRepository:
@@ -152,8 +155,8 @@ class QueueRepository:
         if vote_resp.data is None:
             raise ValueError(f"Failed to upsert vote. RLS may have blocked the request. Error: {vote_resp.error}")
 
-        # Compute new total
-        total = self._fetch_votes_sum_map({queued_song_id}).get(queued_song_id, 0)
+        # Compute new total - use lowercase to match Supabase UUID format
+        total = self._fetch_votes_sum_map({queued_song_id}).get(queued_song_id.lower(), 0)
         return {"vote": vote_resp.data, "total_votes": int(total)}
 
     # --- Internal batch helpers ---
@@ -189,6 +192,7 @@ class QueueRepository:
         if not queued_ids:
             return {}
         ids_list = list(queued_ids)
+        logger.debug("fetching_votes_sum", queued_ids=ids_list)
         resp = (
             self.client
             .from_("votes")
@@ -201,6 +205,7 @@ class QueueRepository:
         for row in rows:
             qid = row["queued_song_id"]
             totals[qid] = int(totals.get(qid, 0)) + int(row.get("vote_value", 0))
+        logger.debug("votes_sum_computed", vote_count=len(rows), totals=totals)
         return totals
 
 
