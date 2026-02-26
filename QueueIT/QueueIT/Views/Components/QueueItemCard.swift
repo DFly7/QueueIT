@@ -2,7 +2,7 @@
 //  QueueItemCard.swift
 //  QueueIT
 //
-//  Compact queue item with vote buttons and track info
+//  Compact queue item with refined vote controls
 //
 
 import SwiftUI
@@ -14,24 +14,24 @@ struct QueueItemCard: View {
     @State private var voteAnimation: Bool = false
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Album art thumbnail
+        HStack(spacing: 14) {
+            // Album art
             if let imageUrl = queuedSong.song.imageUrl {
                 AsyncImage(url: imageUrl) { image in
                     image.resizable()
                 } placeholder: {
-                    Color.gray.opacity(0.2)
+                    Color.white.opacity(0.08)
                 }
-                .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 ZStack {
-                    Color.gray.opacity(0.2)
+                    Color.white.opacity(0.08)
                     Image(systemName: "music.note")
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(.white.opacity(0.4))
                 }
-                .frame(width: 60, height: 60)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             
             // Track info
@@ -46,53 +46,54 @@ struct QueueItemCard: View {
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     Text(queuedSong.song.durationFormatted)
-                        .font(.system(size: 11, weight: .medium))
+                        .font(AppTheme.monoSmall())
                         .foregroundColor(.white.opacity(0.4))
                     
                     Text("•")
                         .foregroundColor(.white.opacity(0.3))
                     
                     Text(queuedSong.addedBy.username ?? "Unknown")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(AppTheme.monoSmall())
                         .foregroundColor(.white.opacity(0.4))
                 }
             }
             
-            Spacer()
+            Spacer(minLength: 8)
             
             // Vote controls
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 Button(action: { vote(value: -1) }) {
                     Image(systemName: "arrow.down")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.white.opacity(0.6))
-                        .frame(width: 32, height: 32)
-                        .background(Color.white.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.08))
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
                 
                 Text("\(queuedSong.votes)")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                    .frame(minWidth: 30)
-                    .scaleEffect(voteAnimation ? 1.3 : 1.0)
+                    .frame(minWidth: 28)
+                    .scaleEffect(voteAnimation ? 1.25 : 1.0)
                     .animation(AppTheme.bouncyAnimation, value: voteAnimation)
                 
                 Button(action: { vote(value: 1) }) {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(AppTheme.primaryGradient)
-                        .frame(width: 32, height: 32)
-                        .background(Color.white.opacity(0.1))
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.neonCyan.opacity(0.15))
                         .clipShape(Circle())
                 }
+                .buttonStyle(.plain)
             }
         }
-        .padding()
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(12)
+        .padding(AppTheme.spacing)
+        .frostedCard()
     }
     
     private func vote(value: Int) {
@@ -105,5 +106,3 @@ struct QueueItemCard: View {
         }
     }
 }
-
-

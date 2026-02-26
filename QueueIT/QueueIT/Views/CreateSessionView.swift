@@ -2,7 +2,7 @@
 //  CreateSessionView.swift
 //  QueueIT
 //
-//  Create a new session with custom join code
+//  Create session with refined Neon Lounge styling
 //
 
 import SwiftUI
@@ -13,80 +13,96 @@ struct CreateSessionView: View {
     
     @State private var joinCode: String = ""
     @State private var isCreating: Bool = false
+    @State private var appeared = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                AppTheme.darkGradient
-                    .ignoresSafeArea()
+                NeonBackground(showGrid: false)
                 
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    // Icon and title
-                    VStack(spacing: 16) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 60))
-                            .foregroundStyle(AppTheme.primaryGradient)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: AppTheme.spacingLg) {
+                        Spacer(minLength: 24)
                         
-                        Text("Create Your Session")
-                            .font(AppTheme.title())
-                            .foregroundColor(.white)
-                        
-                        Text("Choose a unique join code that your friends can use")
-                            .font(AppTheme.body())
-                            .foregroundColor(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Join code input
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Join Code")
-                            .font(AppTheme.caption())
-                            .foregroundColor(.white.opacity(0.7))
-                        
-                        TextField("Enter code (4-20 characters)", text: $joinCode)
-                            .textFieldStyle(PlainTextFieldStyle())
-                            .font(AppTheme.headline())
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.top, 16)
-                    
-                    // Error message
-                    if let error = sessionCoordinator.error {
-                        Text(error)
-                            .font(AppTheme.caption())
-                            .foregroundColor(.red)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    // Create button
-                    Button(action: createSession) {
-                        if isCreating {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: AppTheme.buttonHeight)
-                        } else {
-                            Text("Create Session")
-                                .gradientButton(
-                                    gradient: AppTheme.primaryGradient,
-                                    isEnabled: isValidJoinCode
-                                )
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(AppTheme.primaryGradient.opacity(0.2))
+                                    .frame(width: 88, height: 88)
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 40))
+                                    .foregroundStyle(AppTheme.primaryGradient)
+                            }
+                            .scaleEffect(appeared ? 1 : 0.8)
+                            .opacity(appeared ? 1 : 0)
+                            
+                            Text("Create Your Session")
+                                .font(AppTheme.title())
+                                .foregroundColor(.white)
+                            
+                            Text("Choose a unique join code that your friends can use")
+                                .font(AppTheme.body())
+                                .foregroundColor(.white.opacity(0.6))
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 24)
                         }
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Join Code")
+                                .font(AppTheme.caption())
+                                .foregroundColor(.white.opacity(0.6))
+                            
+                            TextField("Enter code (4-20 characters)", text: $joinCode)
+                                .textFieldStyle(.plain)
+                                .font(AppTheme.mono())
+                                .foregroundColor(.white)
+                                .padding(AppTheme.spacing)
+                                .background(Color.white.opacity(0.08))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
+                                        .stroke(
+                                            isValidJoinCode ? AppTheme.neonCyan.opacity(0.5) : Color.white.opacity(0.1),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .cornerRadius(AppTheme.cornerRadiusSm)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                        }
+                        .padding(.horizontal, AppTheme.spacingXl)
+                        .padding(.top, 8)
+                        
+                        if let error = sessionCoordinator.error {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(AppTheme.coral)
+                                Text(error)
+                                    .font(AppTheme.caption())
+                                    .foregroundColor(AppTheme.coral)
+                            }
+                            .padding(.horizontal, AppTheme.spacingXl)
+                        }
+                        
+                        Button(action: createSession) {
+                            if isCreating {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: AppTheme.buttonHeight)
+                            } else {
+                                Text("Create Session")
+                                    .neonButton(
+                                        gradient: AppTheme.primaryGradient,
+                                        isEnabled: isValidJoinCode
+                                    )
+                            }
+                        }
+                        .disabled(!isValidJoinCode || isCreating)
+                        .padding(.horizontal, AppTheme.spacingXl)
+                        .padding(.top, 8)
+                        
+                        Spacer(minLength: 40)
                     }
-                    .disabled(!isValidJoinCode || isCreating)
-                    .padding(.horizontal, 32)
-                    .padding(.top, 8)
-                    
-                    Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -95,8 +111,14 @@ struct CreateSessionView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(AppTheme.accent)
+                    .foregroundColor(AppTheme.neonCyan)
+                    .font(AppTheme.headline())
                 }
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                appeared = true
             }
         }
         .onChange(of: sessionCoordinator.isInSession) { _, isInSession in
@@ -122,9 +144,7 @@ struct CreateSessionView: View {
 #Preview {
     CreateSessionView()
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
-                    baseURL: URL(string: "http://localhost:8000")!,
-                    authService: AuthService.mock // Use the mock!
-                )))
+            baseURL: URL(string: "http://localhost:8000")!,
+            authService: AuthService.mock
+        )))
 }
-
-
