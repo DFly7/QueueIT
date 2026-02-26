@@ -64,11 +64,14 @@ def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSongReques
     )
 
     # Auto-play if no song is currently playing
-    if not session_row.get("current_song"):
-        session_repo.set_current_song(
-            session_id=session_row["id"],
-            queued_song_id=queued["id"]
-        )
+    # Use atomic conditional update to prevent race conditions with concurrent adds
+    was_set = session_repo.set_current_song_if_empty(
+        session_id=session_row["id"],
+        queued_song_id=queued["id"]
+    )
+    if was_set:
+        # Only update status to "playing" if we successfully set this as current song
+        queue_repo.update_song_status(queued["id"], "playing")
 
     # Build enriched response using list_session_queue to reuse joins
     queue_items = queue_repo.list_session_queue(session_row["id"])

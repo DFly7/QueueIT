@@ -349,47 +349,54 @@ class SessionCoordinator: ObservableObject {
         let oldSongId = oldValue?.currentSong?.id
         let newSongId = newValue?.currentSong?.id
         
+        print("🔄 SessionCoordinator: Session changed - oldSong: \(oldValue?.currentSong?.song.name ?? "none"), newSong: \(newValue?.currentSong?.song.name ?? "none")")
+        
         if oldSongId != newSongId {
             if let newSong = newValue?.currentSong {
+                print("▶️ SessionCoordinator: Playing new track: \(newSong.song.name)")
                 Task {
                     await playTrack(newSong.song)
                 }
             } else {
+                print("⏹️ SessionCoordinator: No current song, stopping playback")
                 MusicManager.shared.stop()
             }
         }
     }
     
     private func playTrack(_ track: Track) async {
+        print("🎵 SessionCoordinator: playTrack called for '\(track.name)' by \(track.artists)")
+        
         if !MusicManager.shared.isAuthorized {
+            print("🔐 SessionCoordinator: Requesting music access...")
             await MusicManager.shared.requestAccess()
         }
         
         guard MusicManager.shared.canPlayMusic else {
-            print("Cannot play music: Not authorized or no subscription")
+            print("❌ SessionCoordinator: Cannot play music - not authorized or no subscription")
             return
+        }
+        
+        // Define the callback once to avoid duplication
+        let onFinishedCallback: () -> Void = { [weak self] in
+            Task { @MainActor in
+                print("🎵 SessionCoordinator: onFinishedCallback triggered")
+                await self?.handleSongFinished()
+            }
         }
         
         // If it's an Apple Music track, play directly by catalog ID (no search needed!)
         if track.source == .appleMusic {
-            print("🎵 Playing Apple Music track by catalog ID: \(track.id)")
-            await MusicManager.shared.playByCatalogID(track.id) { [weak self] in
-                Task { @MainActor in
-                    await self?.handleSongFinished()
-                }
-            }
+            print("🎵 SessionCoordinator: Playing Apple Music track by catalog ID: \(track.id)")
+            await MusicManager.shared.playByCatalogID(track.id, onFinished: onFinishedCallback)
         } else {
             // Fallback: Search by artist + song name for Spotify tracks
-            print("🔍 Searching Apple Music for Spotify track: \(track.name)")
+            print("🔍 SessionCoordinator: Searching Apple Music for Spotify track: \(track.name)")
             let query = "\(track.name) \(track.artists)"
             if let appleMusicSong = await MusicManager.shared.searchForSong(query: query) {
-                await MusicManager.shared.play(song: appleMusicSong) { [weak self] in
-                    Task { @MainActor in
-                        await self?.handleSongFinished()
-                    }
-                }
+                await MusicManager.shared.play(song: appleMusicSong, onFinished: onFinishedCallback)
             } else {
-                print("❌ Could not find song on Apple Music: \(query)")
+                print("❌ SessionCoordinator: Could not find song on Apple Music: \(query)")
             }
         }
     }
@@ -397,12 +404,25 @@ class SessionCoordinator: ObservableObject {
     private func handleSongFinished() async {
         guard isHost else { return }
         
+        print("🎵 SessionCoordinator: Song finished, advancing queue...")
+        
         do {
             try await apiService.songFinished()
+            print("✅ SessionCoordinator: Backend acknowledged song finished")
             // Refresh to get the next song
             await refreshSession()
+            print("✅ SessionCoordinator: Session refreshed, currentSong: \(currentSession?.currentSong?.song.name ?? "none")")
         } catch {
-            print("Failed to mark song as finished: \(error)")
+            print("❌ SessionCoordinator: Failed to mark song as finished: \(error)")
+            // Retry once after a short delay
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            do {
+                try await apiService.songFinished()
+                await refreshSession()
+                print("✅ SessionCoordinator: Retry succeeded")
+            } catch {
+                print("❌ SessionCoordinator: Retry also failed: \(error)")
+            }
         }
     }
 }

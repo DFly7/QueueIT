@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, Dict, Any, List
 from fastapi import HTTPException, status
+import structlog
 
 from app.core.auth import AuthenticatedClient
 from app.repositories import SessionRepository, UserRepository, QueueRepository, SongRepository
@@ -15,6 +16,8 @@ from app.schemas.session import (
 )
 from app.schemas.user import User
 from app.schemas.track import TrackOut
+
+logger = structlog.get_logger(__name__)
 
 
 def _map_queue_item_to_schema(item: Dict[str, Any]) -> QueuedSongResponse:
@@ -183,22 +186,32 @@ def _advance_to_next_song(
     session_repo: SessionRepository,
     queue_repo: QueueRepository,
     session_id: str
-) -> None:
+) -> Optional[Dict[str, Any]]:
     """
     Helper function to move to the next song in the queue.
     Sets the next queued song as 'playing' and updates session.current_song.
+    Returns the next song dict if found, None otherwise.
     """
     # Get the next song in queue
     next_song = queue_repo.get_next_queued_song(session_id)
     
     if next_song:
+        logger.info(
+            "advancing_to_next_song",
+            session_id=session_id,
+            next_song_id=next_song["id"],
+            next_song_name=next_song.get("song", {}).get("name", "unknown")
+        )
         # Update the song status to playing
         queue_repo.update_song_status(next_song["id"], "playing")
         # Set it as the current song in the session
         session_repo.set_current_song(session_id=session_id, queued_song_id=next_song["id"])
+        return next_song
     else:
+        logger.info("no_more_songs_in_queue", session_id=session_id)
         # No more songs in queue, clear current_song
         session_repo.set_current_song(session_id=session_id, queued_song_id=None)
+        return None
 
 
 def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
@@ -212,22 +225,42 @@ def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
     session_repo = SessionRepository(client)
     queue_repo = QueueRepository(client)
 
+    logger.info("song_finished_called", user_id=user_id)
+
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
+        logger.warning("song_finished_no_session", user_id=user_id)
         raise HTTPException(status_code=404, detail="No active session")
 
     session_details = session_repo.get_by_id(session_row["id"])
     if not session_details:
+        logger.warning("song_finished_session_not_found", session_id=session_row["id"])
         raise HTTPException(status_code=404, detail="Session not found")
     if session_details["host_id"] != user_id:
+        logger.warning("song_finished_not_host", user_id=user_id, host_id=session_details["host_id"])
         raise HTTPException(status_code=403, detail="You are not the host of this session")
 
+    current_song_id = session_details.get("current_song")
+    logger.info(
+        "song_finished_processing",
+        session_id=session_row["id"],
+        current_song_id=current_song_id
+    )
+
     # Mark current song as played
-    if session_details.get("current_song"):
-        queue_repo.update_song_status(session_details["current_song"], "played")
+    if current_song_id:
+        queue_repo.update_song_status(current_song_id, "played")
+        logger.info("song_marked_as_played", queued_song_id=current_song_id)
     
     # Advance to next song
-    _advance_to_next_song(session_repo, queue_repo, session_row["id"])
+    next_song = _advance_to_next_song(session_repo, queue_repo, session_row["id"])
+
+    logger.info(
+        "song_finished_complete",
+        session_id=session_row["id"],
+        next_song_id=next_song["id"] if next_song else None,
+        next_song_name=next_song.get("song", {}).get("name") if next_song else None
+    )
 
     return {"ok": True}
 
