@@ -192,6 +192,14 @@ class QueueAPIService {
         return try await performRequest(request, responseType: VoteResponse.self)
     }
     
+    func removeVote(queuedSongId: UUID) async throws -> VoteResponse {
+        let request = try await createRequest(
+            path: "/api/v1/songs/\(queuedSongId.uuidString)/vote",
+            method: "DELETE"
+        )
+        return try await performRequest(request, responseType: VoteResponse.self)
+    }
+    
     // MARK: - Spotify Search
     
     func searchTracks(query: String, limit: Int = 10) async throws -> SearchResults {

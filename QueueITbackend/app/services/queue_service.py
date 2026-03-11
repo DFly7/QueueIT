@@ -92,3 +92,12 @@ def vote_for_queued_song(auth: AuthenticatedClient, queued_song_id: str, request
     return {"ok": True, "total_votes": int(result["total_votes"])}
 
 
+def remove_vote_from_queued_song(auth: AuthenticatedClient, queued_song_id: str) -> Dict[str, Any]:
+    client = auth.client
+    user_id = auth.payload["sub"]
+
+    queue_repo = QueueRepository(client)
+    result = queue_repo.remove_vote(queued_song_id=queued_song_id, user_id=user_id)
+    return {"ok": True, "total_votes": int(result["total_votes"])}
+
+

@@ -244,31 +244,30 @@ class SessionCoordinator: ObservableObject {
         let songId = queuedSong.id
         let previousUserVote = userVotes[songId] ?? 0
         
-        // If same vote as before, no-op (backend uses upsert, so duplicate votes are ignored)
-        guard previousUserVote != value else { return }
+        // If clicking the same vote button, remove the vote
+        let targetValue = (previousUserVote == value) ? 0 : value
         
-        // Update UI immediately (optimistic) - always do this regardless of in-flight status
-        userVotes[songId] = value
+        // Update UI immediately (optimistic)
+        userVotes[songId] = targetValue
         
         // Calculate what the displayed count should be based on vote direction
         // We use a simple model: server_base + user_vote_effect
-        // where user_vote_effect is +1 for upvote, -1 for downvote
-        // This avoids accumulation errors from rapid voting
+        // where user_vote_effect is +1 for upvote, -1 for downvote, 0 for no vote
         
         // If there's already a vote in-flight, just queue our new value and update UI
         if votesInFlight.contains(songId) {
-            pendingVoteValues[songId] = value
+            pendingVoteValues[songId] = targetValue
             // Recalculate display: we don't know server base, but we know our vote changed
             // Just show the effect of our current vote direction
             if let currentDisplayed = displayedVoteCounts[songId] {
-                let delta = value - previousUserVote
+                let delta = targetValue - previousUserVote
                 displayedVoteCounts[songId] = currentDisplayed + delta
             }
             return
         }
         
         // No vote in-flight, we'll send this one
-        await sendVote(songId: songId, value: value, previousUserVote: previousUserVote, originalVotes: queuedSong.votes)
+        await sendVote(songId: songId, value: targetValue, previousUserVote: previousUserVote, originalVotes: queuedSong.votes)
     }
     
     private func sendVote(songId: UUID, value: Int, previousUserVote: Int, originalVotes: Int) async {
@@ -283,7 +282,14 @@ class SessionCoordinator: ObservableObject {
         
         // Send to server
         do {
-            let response = try await apiService.vote(queuedSongId: songId, voteValue: value)
+            let response: VoteResponse
+            if value == 0 {
+                // Remove vote
+                response = try await apiService.removeVote(queuedSongId: songId)
+            } else {
+                // Add or change vote
+                response = try await apiService.vote(queuedSongId: songId, voteValue: value)
+            }
             
             // Update with server's authoritative total
             displayedVoteCounts[songId] = response.totalVotes

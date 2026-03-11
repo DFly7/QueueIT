@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from app.core.auth import AuthenticatedClient, get_authenticated_client
 from app.schemas.track import AddSongRequest
 from app.schemas.session import VoteRequest, QueuedSongResponse
-from app.services.queue_service import add_song_to_queue_for_user, vote_for_queued_song
+from app.services.queue_service import add_song_to_queue_for_user, vote_for_queued_song, remove_vote_from_queued_song
 
 router = APIRouter()
 
@@ -40,3 +40,10 @@ def vote_for_song(
     request: VoteRequest = Body(...),
 ):
     return vote_for_queued_song(auth, queued_song_id, request)
+
+@router.delete("/{queued_song_id}/vote")
+def remove_vote(
+    queued_song_id: str,
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    return remove_vote_from_queued_song(auth, queued_song_id)

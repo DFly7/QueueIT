@@ -159,6 +159,24 @@ class QueueRepository:
         total = self._fetch_votes_sum_map({queued_song_id}).get(queued_song_id.lower(), 0)
         return {"vote": vote_resp.data, "total_votes": int(total)}
 
+    def remove_vote(self, *, queued_song_id: str, user_id: str) -> Dict[str, Any]:
+        """
+        Removes a user's vote from a queued song.
+        Returns the new aggregate sum for that queued song.
+        """
+        delete_resp = (
+            self.client
+            .from_("votes")
+            .delete()
+            .eq("queued_song_id", queued_song_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        # Compute new total after deletion
+        total = self._fetch_votes_sum_map({queued_song_id}).get(queued_song_id.lower(), 0)
+        return {"total_votes": int(total)}
+
     # --- Internal batch helpers ---
     def _fetch_songs_map(self, external_ids: set[str]) -> Dict[str, Dict[str, Any]]:
         if not external_ids:
