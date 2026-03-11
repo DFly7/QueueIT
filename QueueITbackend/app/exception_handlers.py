@@ -16,6 +16,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.exceptions import DuplicateJoinCodeError
+
 logger = structlog.get_logger(__name__)
 
 
@@ -52,6 +54,33 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException) 
         content={
             "error": exc.detail,
             "status_code": exc.status_code,
+            "request_id": request_id,
+        },
+        headers={"X-Request-ID": request_id},
+    )
+
+
+async def duplicate_join_code_handler(request: Request, exc: DuplicateJoinCodeError) -> JSONResponse:
+    """
+    Handler for duplicate join code on session create (409 Conflict).
+    """
+    request_id = getattr(request.state, "request_id", "unknown")
+    user_id = getattr(request.state, "user_id", None)
+    detail = "This join code is already in use. Please choose another."
+
+    logger.warning(
+        "duplicate_join_code",
+        method=request.method,
+        path=str(request.url.path),
+        request_id=request_id,
+        user_id=user_id,
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "error": detail,
+            "status_code": status.HTTP_409_CONFLICT,
             "request_id": request_id,
         },
         headers={"X-Request-ID": request_id},
@@ -134,6 +163,7 @@ def register_exception_handlers(app) -> None:
         app: FastAPI application instance
     """
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    app.add_exception_handler(DuplicateJoinCodeError, duplicate_join_code_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 

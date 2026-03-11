@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional, Dict, Any, List
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 import structlog
 
 from app.core.auth import AuthenticatedClient

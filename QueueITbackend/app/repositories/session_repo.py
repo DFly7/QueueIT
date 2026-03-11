@@ -2,6 +2,8 @@ from typing import Optional, Dict, Any
 
 from supabase import Client
 
+from app.exceptions import DuplicateJoinCodeError
+
 
 class SessionRepository:
     """
@@ -34,6 +36,9 @@ class SessionRepository:
             if response.data is None:
                 raise ValueError(f"Failed to create session: {response}")
         except Exception as e:
+            err_str = str(e).lower()
+            if "23505" in str(e) or "duplicate key" in err_str:
+                raise DuplicateJoinCodeError() from e
             raise ValueError(f"Failed to create session: {e}")
         return response.data[0] # <-- This returns the DICTIONARY
 
