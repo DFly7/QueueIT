@@ -77,13 +77,22 @@ class AuthService: ObservableObject {
     private func requiresProfileSetup(user: User) -> Bool {
         // User needs profile setup if:
         // 1. No username, OR
-        // 2. music_provider is 'none' or nil
+        // 2. music_provider is nil (not yet set)
+        
+        // Check username exists
         guard let username = user.username, !username.isEmpty else {
             return true
         }
         
-        let provider = user.musicProvider ?? "none"
-        return provider == "none"
+        // Check if musicProvider has been explicitly set (can be 'none', 'apple', or 'spotify')
+        // If it's nil, user hasn't completed onboarding yet
+        guard let provider = user.musicProvider else {
+            return true
+        }
+        
+        // User has completed setup if they have a username and any provider value
+        // (including 'none' for guests)
+        return false
     }
     
     // MARK: - Profile Update
