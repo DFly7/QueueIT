@@ -33,6 +33,12 @@ class Settings(BaseModel):
     spotify_client_id: str | None = os.getenv("SPOTIFY_CLIENT_ID")
     spotify_client_secret: str | None = os.getenv("SPOTIFY_CLIENT_SECRET")
 
+    # Apple Music API configuration
+    apple_team_id: str | None = os.getenv("APPLE_TEAM_ID")
+    apple_key_id: str | None = os.getenv("APPLE_KEY_ID")
+    apple_private_key_path: str | None = os.getenv("APPLE_PRIVATE_KEY_PATH")
+    apple_media_id: str | None = os.getenv("APPLE_MEDIA_ID")
+
     supabase_url: str | None = os.getenv("SUPABASE_URL")
     supabase_public_anon_key: str | None = os.getenv("SUPABASE_PUBLIC_ANON_KEY")
 

@@ -13,12 +13,14 @@ struct SessionBase: Codable, Identifiable, Hashable {
     let joinCode: String
     let createdAt: Date
     let host: User
+    let hostProvider: String? // 'apple' or 'spotify'
     
     enum CodingKeys: String, CodingKey {
         case id
         case joinCode = "join_code"
         case createdAt = "created_at"
         case host
+        case hostProvider = "host_provider"
     }
 }
 

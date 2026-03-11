@@ -83,6 +83,7 @@ class SessionBase(BaseModel):
     join_code: str
     created_at: datetime.datetime
     host: User  # Nested host data
+    host_provider: Optional[Literal["apple", "spotify"]] = "spotify"  # Host's music provider for the session
 
     @field_serializer('created_at')
     def serialize_datetime(self, dt: datetime.datetime, _info):

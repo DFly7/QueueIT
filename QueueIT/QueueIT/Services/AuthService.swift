@@ -6,6 +6,7 @@ import Supabase
 class AuthService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentUser: QueueIT.User? // Points to YOUR custom struct
+    @Published var needsProfileSetup = false // True if user needs to complete onboarding
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -62,10 +63,38 @@ class AuthService: ObservableObject {
             
             self.currentUser = profile
             self.isAuthenticated = true
+            
+            // Check if profile setup is needed
+            self.needsProfileSetup = requiresProfileSetup(user: profile)
         } catch {
             print("Profile load failed: \(error)")
             throw error
         }
+    }
+    
+    // MARK: - Profile Setup Check
+    
+    private func requiresProfileSetup(user: User) -> Bool {
+        // User needs profile setup if:
+        // 1. No username, OR
+        // 2. music_provider is 'none' or nil
+        guard let username = user.username, !username.isEmpty else {
+            return true
+        }
+        
+        let provider = user.musicProvider ?? "none"
+        return provider == "none"
+    }
+    
+    // MARK: - Profile Update
+    
+    func updateProfile(username: String?, musicProvider: String?, storefront: String?) async throws {
+        guard let userId = currentUser?.id else {
+            throw NSError(domain: "AuthService", code: -1, userInfo: [NSLocalizedDescriptionKey: "No user logged in"])
+        }
+        
+        // Reload profile after update
+        try await loadProfile(userId: userId)
     }
 
     // MARK: - Session Management

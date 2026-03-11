@@ -15,10 +15,15 @@ class SessionRepository:
         self.client = client
 
     # --- CRUD ---
-    def create_session(self, *, host_id: str, join_code: str) -> Dict[str, Any]:
+    def create_session(self, *, host_id: str, join_code: str, host_provider: str = "spotify") -> Dict[str, Any]:
         """
         Inserts a new session. 'join_code' must be unique.
         Returns the inserted row.
+        
+        Args:
+            host_id: User ID of the host
+            join_code: Unique session join code
+            host_provider: Music provider of the host ('apple' or 'spotify')
         """
         try:
             response = (
@@ -28,6 +33,7 @@ class SessionRepository:
                     {
                         "join_code": join_code,
                         "host_id": host_id,
+                        "host_provider": host_provider,
                     },
                     returning="representation"  # <-- Use this parameter
                 )

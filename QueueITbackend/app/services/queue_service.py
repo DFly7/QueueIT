@@ -8,6 +8,10 @@ from app.repositories import SessionRepository, UserRepository, QueueRepository,
 from app.schemas.session import QueuedSongResponse, VoteRequest
 from app.schemas.track import AddSongRequest, TrackOut
 from app.schemas.user import User
+from app.services.song_matching_service import get_song_matching_service
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _map_queue_item(item: Dict[str, Any]) -> QueuedSongResponse:
@@ -32,7 +36,7 @@ def _map_queue_item(item: Dict[str, Any]) -> QueuedSongResponse:
     )
 
 
-def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSongRequest) -> QueuedSongResponse:
+async def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSongRequest) -> QueuedSongResponse:
     client = auth.client
     user_id = auth.payload["sub"]
 
@@ -40,27 +44,111 @@ def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSongReques
     user_repo = UserRepository(client)
     song_repo = SongRepository(client)
     queue_repo = QueueRepository(client)
+    matching_service = get_song_matching_service()
 
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
         raise HTTPException(status_code=400, detail="User has no active session")
 
-    # Ensure song exists (upsert)
-    song_repo.upsert_song(
-        external_id=request.id,
-        name=request.name,
-        artist=request.artists,
-        album=request.album,
-        durationMSs=request.duration_ms,
-        image_url=str(request.image_url),
-        isrc_identifier=request.isrc,
-        source=request.source,
-    )
+    # Get host user data to determine storefront
+    host_row = user_repo.get_by_id(session_row["host_id"])
+    if not host_row:
+        raise HTTPException(status_code=404, detail="Host not found")
+    
+    host_provider = session_row.get("host_provider", "spotify")
+    host_storefront = host_row.get("storefront", "us")
+    song_source = request.source  # 'spotify' or 'apple'
+    
+    logger.info("Add song request", extra={
+        "user_id": user_id,
+        "session_id": session_row["id"],
+        "song_source": song_source,
+        "host_provider": host_provider,
+        "song_id": request.id
+    })
+    
+    # Cross-catalog resolution logic
+    resolved_song_id = request.id
+    resolved_source = song_source
+    
+    # Only resolve if guest is using Spotify and host is using Apple Music
+    if song_source == "spotify" and host_provider == "apple":
+        logger.info("Cross-catalog resolution needed (Spotify → Apple Music)", extra={
+            "spotify_id": request.id,
+            "storefront": host_storefront
+        })
+        
+        # Resolve Spotify track to Apple Music
+        resolution_result = await matching_service.resolve_spotify_to_apple(
+            spotify_id=request.id,
+            storefront=host_storefront
+        )
+        
+        if not resolution_result:
+            # Song not available on Apple Music
+            raise HTTPException(
+                status_code=422,
+                detail=f"This track isn't available on Apple Music. Try another version?"
+            )
+        
+        apple_id, match_method = resolution_result
+        logger.info("✅ Song resolved to Apple Music", extra={
+            "spotify_id": request.id,
+            "apple_id": apple_id,
+            "method": match_method
+        })
+        
+        # Fetch Apple Music track data to store in songs table
+        apple_track_data = await matching_service.extract_apple_music_track_data(
+            apple_id=apple_id,
+            storefront=host_storefront
+        )
+        
+        if not apple_track_data:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to fetch Apple Music track data"
+            )
+        
+        # Use Apple Music track data
+        resolved_song_id = apple_track_data["external_id"]
+        resolved_source = "apple"
+        
+        # Override request data with Apple Music data
+        song_repo.upsert_song(
+            external_id=apple_track_data["external_id"],
+            name=apple_track_data["name"],
+            artist=apple_track_data["artist"],
+            album=apple_track_data["album"],
+            durationMSs=apple_track_data["duration_ms"],
+            image_url=apple_track_data["image_url"],
+            isrc_identifier=apple_track_data["isrc"],
+            source="apple",
+        )
+    else:
+        # No resolution needed - same provider or Apple guest (not implemented yet)
+        logger.info("No cross-catalog resolution needed", extra={
+            "song_source": song_source,
+            "host_provider": host_provider
+        })
+        
+        # Ensure song exists (upsert)
+        song_repo.upsert_song(
+            external_id=request.id,
+            name=request.name,
+            artist=request.artists,
+            album=request.album,
+            durationMSs=request.duration_ms,
+            image_url=str(request.image_url),
+            isrc_identifier=request.isrc,
+            source=request.source,
+        )
 
+    # Add resolved song to queue
     queued = queue_repo.add_song_to_queue(
         session_id=session_row["id"],
         added_by_id=user_id,
-        song_external_id=request.id,
+        song_external_id=resolved_song_id,
     )
 
     # Auto-play if no song is currently playing

@@ -9,11 +9,13 @@ import SwiftUI
 
 struct CreateSessionView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
+    @EnvironmentObject var authService: AuthService
     @Environment(\.dismiss) var dismiss
     
     @State private var joinCode: String = ""
     @State private var isCreating: Bool = false
     @State private var appeared = false
+    @State private var showProviderAlert = false
     
     var body: some View {
         NavigationView {
@@ -126,6 +128,11 @@ struct CreateSessionView: View {
                 dismiss()
             }
         }
+        .alert("Music Provider Required", isPresented: $showProviderAlert) {
+            Button("OK") { }
+        } message: {
+            Text("You need to connect Apple Music or Spotify to host sessions. Please update your profile settings.")
+        }
     }
     
     private var isValidJoinCode: Bool {
@@ -133,6 +140,13 @@ struct CreateSessionView: View {
     }
     
     private func createSession() {
+        // Validate user has a music provider
+        guard let musicProvider = authService.currentUser?.musicProvider,
+              musicProvider != "none" else {
+            showProviderAlert = true
+            return
+        }
+        
         isCreating = true
         Task {
             await sessionCoordinator.createSession(joinCode: joinCode)
@@ -143,6 +157,7 @@ struct CreateSessionView: View {
 
 #Preview {
     CreateSessionView()
+        .environmentObject(AuthService.mock)
         .environmentObject(SessionCoordinator(apiService: QueueAPIService(
             baseURL: URL(string: "http://localhost:8000")!,
             authService: AuthService.mock

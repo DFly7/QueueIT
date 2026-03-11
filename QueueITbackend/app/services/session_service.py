@@ -99,7 +99,26 @@ def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateReq
     session_repo = SessionRepository(client)
     user_repo = UserRepository(client)
 
-    created = session_repo.create_session(host_id=user_id, join_code=request.join_code)
+    # Get host user data to check music_provider
+    host_user = user_repo.get_by_id(user_id)
+    if not host_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate host has a music provider (not 'none')
+    music_provider = host_user.get("music_provider", "none")
+    if music_provider == "none":
+        raise HTTPException(
+            status_code=400,
+            detail="You need to connect a music provider (Apple Music or Spotify) to host sessions"
+        )
+    
+    # Create session with host_provider from user's music_provider
+    created = session_repo.create_session(
+        host_id=user_id,
+        join_code=request.join_code,
+        host_provider=music_provider
+    )
+    
     # Set creator's current_session to the new session
     user_repo.set_current_session(user_id=user_id, session_id=created["id"])
 

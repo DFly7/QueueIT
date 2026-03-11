@@ -22,6 +22,41 @@ class UserRepository:
         )
         return response.data
 
+    def update_profile(
+        self, 
+        user_id: str, 
+        username: Optional[str] = None,
+        music_provider: Optional[str] = None,
+        storefront: Optional[str] = None,
+        spotify_refresh_token: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update user profile fields"""
+        update_data = {}
+        
+        if username is not None:
+            update_data["username"] = username
+        if music_provider is not None:
+            update_data["music_provider"] = music_provider
+        if storefront is not None:
+            update_data["storefront"] = storefront
+        if spotify_refresh_token is not None:
+            update_data["spotify_refresh_token"] = spotify_refresh_token
+            
+        if not update_data:
+            raise ValueError("No fields to update")
+            
+        response = (
+            self.client
+            .from_("users")
+            .update(update_data, returning="representation")
+            .eq("id", user_id)
+            .execute()
+        )
+        
+        if not response.data:
+            raise ValueError("Failed to update user profile")
+        return response.data[0]
+
     def set_current_session(self, *, user_id: str, session_id: Optional[str]) -> Dict[str, Any]:
         print(f"--- SETTING CURRENT SESSION FOR USER {user_id} TO {session_id} ---")
         response = (

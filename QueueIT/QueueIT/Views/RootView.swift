@@ -17,6 +17,8 @@ struct RootView: View {
         Group {
             if !authService.isAuthenticated {
                 authPrompt
+            } else if authService.needsProfileSetup {
+                ProfileSetupView()
             } else if sessionCoordinator.isInSession {
                 SessionView()
             } else {

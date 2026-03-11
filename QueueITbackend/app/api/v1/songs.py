@@ -27,11 +27,11 @@ def get_my_songs():
 
 
 @router.post("/add", response_model=QueuedSongResponse)
-def add_song(
+async def add_song(
     auth: AuthenticatedClient = Depends(get_authenticated_client),
     request: AddSongRequest = Body(...),
 ):
-    return add_song_to_queue_for_user(auth, request)
+    return await add_song_to_queue_for_user(auth, request)
 
 @router.post("/{queued_song_id}/vote")
 def vote_for_song(

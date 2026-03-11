@@ -20,6 +20,7 @@ CREATE TABLE public.sessions (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   host_id uuid NOT NULL,
   current_song uuid,
+  host_provider varchar(20) NOT NULL DEFAULT 'spotify' CHECK (host_provider IN ('apple', 'spotify')),
   CONSTRAINT sessions_pkey PRIMARY KEY (id),
   CONSTRAINT sessions_host_id_fkey FOREIGN KEY (host_id) REFERENCES public.users(id),
   CONSTRAINT sessions_current_song_fkey FOREIGN KEY (current_song) REFERENCES public.queued_songs(id)
@@ -42,6 +43,9 @@ CREATE TABLE public.users (
   username text UNIQUE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   current_session uuid,
+  music_provider varchar(20) NOT NULL DEFAULT 'none' CHECK (music_provider IN ('apple', 'spotify', 'none')),
+  spotify_refresh_token text,
+  storefront varchar(10) DEFAULT 'us',
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_current_session_fkey FOREIGN KEY (current_session) REFERENCES public.sessions(id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
