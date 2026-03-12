@@ -9,9 +9,15 @@ import SwiftUI
 
 struct SessionView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
+    @EnvironmentObject var authService: AuthService
     @State private var showingSearch = false
     @State private var showingHostControls = false
     @State private var appeared = false
+    
+    /// True if the current user has Apple Music connected
+    private var usesAppleMusic: Bool {
+        authService.currentUser?.musicProvider == "apple"
+    }
     
     var body: some View {
         NavigationView {
@@ -91,8 +97,14 @@ struct SessionView: View {
                 }
             }
             .sheet(isPresented: $showingSearch) {
-                AppleMusicSearchView()
-                    .environmentObject(sessionCoordinator)
+                if usesAppleMusic {
+                    AppleMusicSearchView()
+                        .environmentObject(sessionCoordinator)
+                } else {
+                    // None and Spotify users both use backend Spotify search
+                    SearchAndAddView()
+                        .environmentObject(sessionCoordinator)
+                }
             }
             .sheet(isPresented: $showingHostControls) {
                 HostControlsView()
