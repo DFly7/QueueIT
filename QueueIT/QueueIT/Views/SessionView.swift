@@ -178,11 +178,15 @@ struct SessionView: View {
             if sessionCoordinator.queue.isEmpty {
                 emptyQueue
             } else {
-                LazyVStack(spacing: 12) {
+                VStack(spacing: 12) {
                     ForEach(sessionCoordinator.queue) { queuedSong in
                         QueueItemCard(queuedSong: queuedSong)
                     }
                 }
+                .animation(
+                    .spring(duration: 0.5, bounce: 0.25),
+                    value: sessionCoordinator.queue.map(\.id)
+                )
             }
         }
     }

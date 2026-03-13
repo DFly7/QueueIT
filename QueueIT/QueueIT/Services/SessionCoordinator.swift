@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import MusicKit
+import SwiftUI
 
 @MainActor
 class SessionCoordinator: ObservableObject {
@@ -257,11 +258,11 @@ class SessionCoordinator: ObservableObject {
         // If there's already a vote in-flight, just queue our new value and update UI
         if votesInFlight.contains(songId) {
             pendingVoteValues[songId] = targetValue
-            // Recalculate display: we don't know server base, but we know our vote changed
-            // Just show the effect of our current vote direction
             if let currentDisplayed = displayedVoteCounts[songId] {
                 let delta = targetValue - previousUserVote
-                displayedVoteCounts[songId] = currentDisplayed + delta
+                withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
+                    displayedVoteCounts[songId] = currentDisplayed + delta
+                }
             }
             return
         }
@@ -278,7 +279,9 @@ class SessionCoordinator: ObservableObject {
         let baseVotes = displayedVoteCounts[songId] ?? originalVotes
         let delta = value - previousUserVote
         let optimisticCount = baseVotes + delta
-        displayedVoteCounts[songId] = optimisticCount
+        withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
+            displayedVoteCounts[songId] = optimisticCount
+        }
         
         // Send to server
         do {
@@ -292,7 +295,9 @@ class SessionCoordinator: ObservableObject {
             }
             
             // Update with server's authoritative total
-            displayedVoteCounts[songId] = response.totalVotes
+            withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
+                displayedVoteCounts[songId] = response.totalVotes
+            }
         } catch {
             // On error, we don't rollback userVotes since the user's intent is clear
             // Just show whatever the server last told us (or keep optimistic)

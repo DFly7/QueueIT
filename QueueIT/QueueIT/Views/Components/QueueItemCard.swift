@@ -11,6 +11,7 @@ struct QueueItemCard: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     let queuedSong: QueuedSongResponse
     
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var voteAnimation: Bool = false
     
     private var userVote: Int {
@@ -142,14 +143,14 @@ struct QueueItemCard: View {
     }
     
     private func vote(value: Int) {
-        withAnimation(AppTheme.bouncyAnimation) {
+        withAnimation(reduceMotion ? .none : AppTheme.bouncyAnimation) {
             voteAnimation = true
         }
         
         Task {
             await sessionCoordinator.vote(on: queuedSong, value: value)
             try? await Task.sleep(nanoseconds: 300_000_000)
-            withAnimation {
+            withAnimation(reduceMotion ? .none : .spring(duration: 0.3)) {
                 voteAnimation = false
             }
         }
