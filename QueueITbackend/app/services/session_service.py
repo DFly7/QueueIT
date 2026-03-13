@@ -32,7 +32,7 @@ def _map_queue_item_to_schema(item: Dict[str, Any]) -> QueuedSongResponse:
         album=item["song"]["album"],
         durationMSs=item["song"]["durationMSs"],
         image_url=item["song"]["image_url"],
-        source=item["song"].get("source") or "spotify",
+        source="apple_music" if item["song"].get("source") == "apple" else (item["song"].get("source") or "spotify"),
     )
     added_by = User(id=item["added_by"]["id"], username=item["added_by"].get("username"))
     return QueuedSongResponse(

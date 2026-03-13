@@ -97,14 +97,12 @@ struct SessionView: View {
                 }
             }
             .sheet(isPresented: $showingSearch) {
-                if usesAppleMusic {
-                    AppleMusicSearchView()
-                        .environmentObject(sessionCoordinator)
-                } else {
-                    // None and Spotify users both use backend Spotify search
-                    SearchAndAddView()
-                        .environmentObject(sessionCoordinator)
-                }
+                UnifiedSearchView(
+                    provider: usesAppleMusic
+                        ? AppleMusicTrackSearchProvider()
+                        : SpotifyTrackSearchProvider(apiService: sessionCoordinator.apiService)
+                )
+                .environmentObject(sessionCoordinator)
             }
             .sheet(isPresented: $showingHostControls) {
                 HostControlsView()

@@ -45,6 +45,8 @@ class QueueAPIService {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        // Skip ngrok's browser interstitial (free tier returns HTML "Visit Site" page; we need raw API JSON)
+        request.setValue("1", forHTTPHeaderField: "ngrok-skip-browser-warning")
         
         // 3. AUTOMATIC AUTH INJECTION
         // This now handles Auth for EVERYTHING (Sessions, Songs, and Search)

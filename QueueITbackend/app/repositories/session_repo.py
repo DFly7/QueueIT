@@ -57,6 +57,8 @@ class SessionRepository:
             .maybe_single()
             .execute()
         )
+        if response is None:
+            return None
         return response.data
 
     def get_by_id(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -68,6 +70,8 @@ class SessionRepository:
             .maybe_single()
             .execute()
         )
+        if response is None:
+            return None
         return response.data
 
     def set_current_song(self, *, session_id: str, queued_song_id: Optional[str]) -> Dict[str, Any]:

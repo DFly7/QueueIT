@@ -23,7 +23,7 @@ def _map_queue_item(item: Dict[str, Any]) -> QueuedSongResponse:
         album=item["song"]["album"],
         durationMSs=item["song"]["durationMSs"],
         image_url=item["song"]["image_url"],
-        source=item["song"].get("source") or "spotify",
+        source="apple_music" if item["song"].get("source") == "apple" else (item["song"].get("source") or "spotify"),
     )
     added_by = User(id=item["added_by"]["id"], username=item["added_by"].get("username"))
     return QueuedSongResponse(
@@ -112,7 +112,7 @@ async def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSong
         
         # Use Apple Music track data
         resolved_song_id = apple_track_data["external_id"]
-        resolved_source = "apple"
+        resolved_source = "apple_music"
         
         # Override request data with Apple Music data
         song_repo.upsert_song(
@@ -123,7 +123,7 @@ async def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSong
             durationMSs=apple_track_data["duration_ms"],
             image_url=apple_track_data["image_url"],
             isrc_identifier=apple_track_data["isrc"],
-            source="apple",
+            source="apple_music",
         )
     else:
         # No resolution needed - same provider or Apple guest (not implemented yet)

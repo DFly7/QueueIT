@@ -1,60 +1,37 @@
 //
-//  AppleMusicSearchView.swift
+//  UnifiedSearchView.swift
 //  QueueIT
 //
-//  Search Apple Music catalog and add songs to queue
+//  Unified search view based on Apple Music layout.
+//  Works with any TrackSearchProvider (Apple Music or Spotify).
 //
 
 import SwiftUI
-import MusicKit
 
-struct AppleMusicSearchView: View {
+struct UnifiedSearchView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @Environment(\.dismiss) var dismiss
-    
-    @State private var searchQuery: String = ""
-    @State private var searchResults: [Song] = []
-    @State private var isSearching: Bool = false
-    @State private var addingSongIds: Set<MusicItemID> = []
-    @State private var addedSongIds: Set<MusicItemID> = []
+
+    @StateObject private var searchVM: UnifiedTrackSearchViewModel
+    private let provider: any TrackSearchProvider
+
+    @State private var addingTrackIds: Set<String> = []
+    @State private var addedTrackIds: Set<String> = []
     @State private var errorMessage: String?
-    
+
+    init(provider: any TrackSearchProvider) {
+        self.provider = provider
+        _searchVM = StateObject(wrappedValue: UnifiedTrackSearchViewModel(provider: provider))
+    }
+
     var body: some View {
         NavigationView {
             ZStack {
                 NeonBackground(showGrid: false)
-                
+
                 VStack(spacing: 0) {
-                    // Search bar
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        TextField("Search songs...", text: $searchQuery)
-                            .foregroundColor(.white)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
-                            .onChange(of: searchQuery) { _, newValue in
-                                if !newValue.isEmpty {
-                                    Task {
-                                        await performSearch(query: newValue)
-                                    }
-                                }
-                            }
-                        
-                        if !searchQuery.isEmpty {
-                            Button(action: { searchQuery = "" }) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.white.opacity(0.6))
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(12)
-                    .padding()
-                    
-                    // Error message
+                    searchBar
+
                     if let error = errorMessage {
                         HStack {
                             Image(systemName: "exclamationmark.circle.fill")
@@ -66,37 +43,23 @@ struct AppleMusicSearchView: View {
                         .padding(.horizontal)
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                    
-                    // Results
-                    if isSearching {
+
+                    if searchVM.isLoading {
                         ProgressView()
                             .tint(.white)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if searchResults.isEmpty && !searchQuery.isEmpty {
+                    } else if !searchVM.results.isEmpty {
+                        resultsList
+                    } else if !searchVM.query.isEmpty {
                         Text("No results found")
                             .foregroundColor(.white.opacity(0.6))
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: 12) {
-                                ForEach(searchResults, id: \.id) { song in
-                                    AppleMusicResultRow(
-                                        song: song,
-                                        isAdding: addingSongIds.contains(song.id),
-                                        isAdded: addedSongIds.contains(song.id)
-                                    ) {
-                                        Task {
-                                            await addSong(song)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding()
-                        }
+                        Spacer()
                     }
                 }
             }
-            .navigationTitle("Search Apple Music")
+            .navigationTitle("Search \(provider.displayName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -108,70 +71,97 @@ struct AppleMusicSearchView: View {
             }
         }
     }
-    
-    private func performSearch(query: String) async {
-        isSearching = true
-        searchResults = await MusicManager.shared.searchCatalog(query: query)
-        isSearching = false
-    }
-    
-    private func addSong(_ song: Song) async {
-        guard !addingSongIds.contains(song.id) && !addedSongIds.contains(song.id) else { return }
-        
-        // Clear any previous error
-        withAnimation {
-            errorMessage = nil
-        }
-        
-        // Mark as adding
-        addingSongIds.insert(song.id)
-        
-        let track = song.toTrack()
-        let success = await sessionCoordinator.addSong(track: track)
-        
-        // Remove from adding state
-        addingSongIds.remove(song.id)
-        
-        if success {
-            // Mark as successfully added with animation
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                addedSongIds.insert(song.id)
+
+    // MARK: - Search Bar
+
+    private var searchBar: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.white.opacity(0.6))
+
+            TextField("Search songs...", text: $searchVM.query)
+                .foregroundColor(.white)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+
+            if !searchVM.query.isEmpty {
+                Button(action: { searchVM.clearQuery() }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.white.opacity(0.6))
+                }
             }
-            
-            // Provide haptic feedback
+        }
+        .padding()
+        .background(Color.white.opacity(0.1))
+        .cornerRadius(12)
+        .padding()
+    }
+
+    // MARK: - Results List
+
+    private var resultsList: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(searchVM.results) { track in
+                    TrackResultRow(
+                        track: track,
+                        isAdding: addingTrackIds.contains(track.id),
+                        isAdded: addedTrackIds.contains(track.id)
+                    ) {
+                        Task { await addTrack(track) }
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Add Track
+
+    private func addTrack(_ track: Track) async {
+        guard !addingTrackIds.contains(track.id) && !addedTrackIds.contains(track.id) else { return }
+
+        withAnimation { errorMessage = nil }
+        addingTrackIds.insert(track.id)
+
+        let success = await sessionCoordinator.addSong(track: track)
+
+        addingTrackIds.remove(track.id)
+
+        if success {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                addedTrackIds.insert(track.id)
+            }
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
         } else {
-            // Show error
             withAnimation {
                 errorMessage = sessionCoordinator.error ?? "Failed to add song"
             }
-            
-            // Clear error after a few seconds
             Task {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 withAnimation {
-                    if errorMessage != nil {
-                        errorMessage = nil
-                    }
+                    if errorMessage != nil { errorMessage = nil }
                 }
             }
         }
     }
 }
 
-struct AppleMusicResultRow: View {
-    let song: Song
+// MARK: - Track Result Row
+
+struct TrackResultRow: View {
+    let track: Track
     var isAdding: Bool = false
     var isAdded: Bool = false
     let onAdd: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 12) {
-            // Album art
+            // Album artwork
             ZStack {
-                if let artwork = song.artwork {
-                    AsyncImage(url: artwork.url(width: 60, height: 60)) { image in
+                if let imageUrl = track.imageUrl {
+                    AsyncImage(url: imageUrl) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
@@ -185,8 +175,7 @@ struct AppleMusicResultRow: View {
                         .frame(width: 60, height: 60)
                         .cornerRadius(8)
                 }
-                
-                // Success checkmark overlay
+
                 if isAdded {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(AppTheme.neonCyan.opacity(0.9))
@@ -197,35 +186,35 @@ struct AppleMusicResultRow: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            
-            // Song info
+
+            // Track info
             VStack(alignment: .leading, spacing: 4) {
-                Text(song.title)
+                Text(track.name)
                     .font(AppTheme.body())
                     .foregroundColor(isAdded ? AppTheme.neonCyan : .white)
                     .lineLimit(1)
-                
-                Text(song.artistName)
+
+                Text(track.artists)
                     .font(AppTheme.caption())
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
-                
+
                 if isAdded {
                     Text("Added to queue!")
                         .font(AppTheme.monoSmall())
                         .foregroundColor(AppTheme.neonCyan)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else if let album = song.albumTitle {
-                    Text(album)
+                } else {
+                    Text(track.album)
                         .font(AppTheme.caption())
                         .foregroundColor(.white.opacity(0.4))
                         .lineLimit(1)
                 }
             }
-            
+
             Spacer()
-            
-            // Add button / Loading / Added state
+
+            // Add / loading / added state
             Group {
                 if isAdded {
                     Image(systemName: "checkmark.circle.fill")
@@ -260,6 +249,8 @@ struct AppleMusicResultRow: View {
 }
 
 #Preview {
-    AppleMusicSearchView()
-        .environmentObject(SessionCoordinator.mock())
+    UnifiedSearchView(
+        provider: AppleMusicTrackSearchProvider()
+    )
+    .environmentObject(SessionCoordinator.mock())
 }

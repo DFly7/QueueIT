@@ -5,6 +5,7 @@ Handles cross-catalog song resolution between Spotify and Apple Music.
 Uses ISRC as the "golden key" with fuzzy metadata fallback.
 """
 
+import asyncio
 import httpx
 from typing import Optional, Tuple
 from app.services.apple_music_service import get_apple_music_service
@@ -196,7 +197,7 @@ class SongMatchingService:
                     "duration_ms": attrs.get("durationInMillis", 0),
                     "image_url": attrs.get("artwork", {}).get("url", "").replace("{w}x{h}", "300x300"),
                     "isrc": attrs.get("isrc", ""),
-                    "source": "apple"
+                    "source": "apple_music"
                 }
                 
                 return track_data
