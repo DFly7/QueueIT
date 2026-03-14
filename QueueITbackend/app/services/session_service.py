@@ -338,13 +338,11 @@ def request_skip_for_user(auth: AuthenticatedClient) -> SkipRequestResponse:
             skip_request_count=skip_request_count,
             participant_count=participant_count,
         )
-        # Mark current song as skipped
-        session_details = session_repo.get_by_id(session_id)
-        if session_details and session_details.get("current_song"):
-            queue_repo.update_song_status(session_details["current_song"], "skipped")
-
-        # Advance and clear skip requests
-        _advance_to_next_song(session_repo, queue_repo, session_id, skip_repo)
+        # Use a single SECURITY DEFINER RPC for the full advance — regular
+        # participants cannot UPDATE queued_songs or sessions via RLS directly.
+        # The RPC handles: mark current as skipped, clear skip_requests,
+        # find next song, mark it playing, update sessions.current_song.
+        skip_repo.crowdsourced_skip_advance(session_id)
         skip_request_count = 0
         skipped = True
 

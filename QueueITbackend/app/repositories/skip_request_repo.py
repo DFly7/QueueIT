@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from supabase import Client
 
@@ -71,3 +71,17 @@ class SkipRequestRepository:
             "clear_skip_requests",
             {"p_session_id": session_id},
         ).execute()
+
+    def crowdsourced_skip_advance(self, session_id: str) -> Optional[str]:
+        """
+        Performs the full crowdsourced-skip advance atomically via a SECURITY DEFINER
+        RPC, bypassing RLS for all required writes (queued_songs UPDATE, sessions UPDATE,
+        skip_requests DELETE). Regular participants cannot perform these writes directly.
+
+        Returns the new current queued_song id, or None if the queue is empty.
+        """
+        response = self.client.rpc(
+            "crowdsourced_skip_advance",
+            {"p_session_id": session_id},
+        ).execute()
+        return response.data or None

@@ -205,10 +205,30 @@ class SessionCoordinator: ObservableObject {
         guard isInSession else { return }
         
         do {
-            let session = try await apiService.getCurrentSession()
-            currentSession = session
-            populateDisplayedVoteCounts(from: session)
-            populateUserVotes(from: session)
+            let newSession = try await apiService.getCurrentSession()
+
+            // If the song changed and skip requests were at or past the 50% threshold,
+            // this refresh is delivering a crowdsourced skip to users who didn't tap
+            // the button. Show the full bar briefly before switching songs.
+            // Using >= 50% (not just > 0) avoids false-positives when a song ends
+            // naturally while a small number of unrelated skip requests were pending.
+            let songChanged = currentSession?.currentSong?.id != newSession.currentSong?.id
+            let prevSkipCount = currentSession?.skipRequestCount ?? 0
+            let prevParticipantCount = max(currentSession?.participantCount ?? 1, 1)
+            let skipWasAtThreshold = Double(prevSkipCount) >= Double(prevParticipantCount) / 2.0
+
+            if songChanged && skipWasAtThreshold {
+                if var displaySession = currentSession {
+                    displaySession.skipRequestCount = displaySession.participantCount
+                    displaySession.userRequestedSkip = true
+                    currentSession = displaySession
+                }
+                try? await Task.sleep(nanoseconds: 700_000_000)
+            }
+
+            currentSession = newSession
+            populateDisplayedVoteCounts(from: newSession)
+            populateUserVotes(from: newSession)
             error = nil
         } catch {
             self.error = error.localizedDescription
