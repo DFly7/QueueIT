@@ -16,6 +16,7 @@ struct CreateSessionView: View {
     @State private var isCreating: Bool = false
     @State private var appeared = false
     @State private var showProviderAlert = false
+    @State private var validationError: ValidationError?
     
     var body: some View {
         NavigationView {
@@ -63,13 +64,33 @@ struct CreateSessionView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
                                         .stroke(
-                                            isValidJoinCode ? AppTheme.neonCyan.opacity(0.5) : Color.white.opacity(0.1),
+                                            validationError != nil ? Color.red.opacity(0.5) : (isValidJoinCode ? AppTheme.neonCyan.opacity(0.5) : Color.white.opacity(0.1)),
                                             lineWidth: 1
                                         )
                                 )
                                 .cornerRadius(AppTheme.cornerRadiusSm)
                                 .autocapitalization(.none)
                                 .disableAutocorrection(true)
+                                .onChange(of: joinCode) { _, _ in
+                                    // Clear validation error when user starts typing
+                                    if validationError != nil {
+                                        validationError = nil
+                                    }
+                                    // Clear session coordinator error
+                                    if sessionCoordinator.error != nil {
+                                        sessionCoordinator.error = nil
+                                    }
+                                }
+                            
+                            if let validationError = validationError {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(AppTheme.coral)
+                                    Text(validationError.localizedDescription)
+                                        .font(AppTheme.caption())
+                                        .foregroundColor(AppTheme.coral)
+                                }
+                            }
                         }
                         .padding(.horizontal, AppTheme.spacingXl)
                         .padding(.top, 8)
@@ -136,20 +157,29 @@ struct CreateSessionView: View {
     }
     
     private var isValidJoinCode: Bool {
-        joinCode.count >= 4 && joinCode.count <= 20
+        Validator.validateJoinCode(joinCode) == nil
     }
     
     private func createSession() {
+        // Validate join code first
+        if let error = Validator.validateJoinCode(joinCode) {
+            validationError = error
+            HapticFeedback.error()
+            return
+        }
+        
         // Validate user has a music provider
         guard let musicProvider = authService.currentUser?.musicProvider,
               musicProvider != "none" else {
             showProviderAlert = true
+            HapticFeedback.warning()
             return
         }
         
+        validationError = nil
         isCreating = true
         Task {
-            await sessionCoordinator.createSession(joinCode: joinCode)
+            await sessionCoordinator.createSession(joinCode: joinCode.trimmingCharacters(in: .whitespaces))
             isCreating = false
         }
     }

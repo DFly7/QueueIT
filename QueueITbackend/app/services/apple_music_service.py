@@ -94,7 +94,8 @@ class AppleMusicService:
     async def search_by_isrc(
         self,
         isrc: str,
-        storefront: str = "us"
+        storefront: str = "us",
+        preferred_album: Optional[str] = None
     ) -> Optional[dict]:
         """
         Search Apple Music catalog by ISRC.
@@ -102,6 +103,7 @@ class AppleMusicService:
         Args:
             isrc: International Standard Recording Code
             storefront: Apple Music storefront/region (e.g., 'us', 'gb', 'ca')
+            preferred_album: Optional album name to prefer when multiple versions exist
             
         Returns:
             Song data dict or None if not found
@@ -125,17 +127,43 @@ class AppleMusicService:
                 data = response.json()
                 results = data.get("data", [])
                 
-                if results:
-                    song = results[0]  # Take first match
-                    logger.info("Found Apple Music track by ISRC", extra={
-                        "isrc": isrc,
-                        "apple_id": song["id"],
-                        "name": song["attributes"].get("name")
-                    })
-                    return song
-                else:
+                if not results:
                     logger.debug("No Apple Music match for ISRC", extra={"isrc": isrc})
                     return None
+                
+                # Log when multiple versions exist
+                if len(results) > 1:
+                    logger.info("Multiple Apple Music versions found for ISRC", extra={
+                        "isrc": isrc,
+                        "count": len(results),
+                        "albums": [r.get("attributes", {}).get("albumName") for r in results]
+                    })
+                
+                # If preferred album specified, try to match it
+                if preferred_album and len(results) > 1:
+                    preferred_album_lower = preferred_album.lower()
+                    for result in results:
+                        apple_album = result.get("attributes", {}).get("albumName", "")
+                        if apple_album.lower() == preferred_album_lower:
+                            logger.info("Found Apple Music track with matching album", extra={
+                                "isrc": isrc,
+                                "apple_id": result["id"],
+                                "name": result["attributes"].get("name"),
+                                "album": apple_album,
+                                "preferred": True
+                            })
+                            return result
+                
+                # Default: Take first match
+                song = results[0]
+                logger.info("Found Apple Music track by ISRC", extra={
+                    "isrc": isrc,
+                    "apple_id": song["id"],
+                    "name": song["attributes"].get("name"),
+                    "album": song["attributes"].get("albumName"),
+                    "preferred": False
+                })
+                return song
                     
             except httpx.HTTPStatusError as e:
                 logger.error("Apple Music API error", extra={

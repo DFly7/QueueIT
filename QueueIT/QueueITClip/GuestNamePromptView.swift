@@ -15,6 +15,7 @@ struct GuestNamePromptView: View {
 
     @State private var name: String = AppClipGuestName.randomFunName
     @State private var appeared = false
+    @State private var validationError: ValidationError?
 
     var body: some View {
         ZStack {
@@ -58,10 +59,27 @@ struct GuestNamePromptView: View {
                         .background(Color.white.opacity(0.08))
                         .overlay(
                             RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
-                                .stroke(AppTheme.neonCyan.opacity(0.4), lineWidth: 1)
+                                .stroke(validationError != nil ? Color.red.opacity(0.5) : AppTheme.neonCyan.opacity(0.4), lineWidth: 1)
                         )
                         .cornerRadius(AppTheme.cornerRadiusSm)
                         .autocorrectionDisabled()
+                        .onChange(of: name) { _, _ in
+                            // Clear validation error when user starts typing
+                            if validationError != nil {
+                                validationError = nil
+                            }
+                        }
+                    
+                    if let validationError = validationError {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.red.opacity(0.8))
+                            Text(validationError.localizedDescription)
+                                .font(AppTheme.caption())
+                                .foregroundColor(.red.opacity(0.8))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    }
 
                     Button(action: rollName) {
                         HStack(spacing: 6) {
@@ -104,6 +122,14 @@ struct GuestNamePromptView: View {
     private func confirm() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        
+        // Validate username
+        if let error = Validator.validateUsername(trimmed) {
+            validationError = error
+            HapticFeedback.error()
+            return
+        }
+        
         AppClipGuestName.displayName = trimmed
         onConfirm?(trimmed)
         isPresented = false

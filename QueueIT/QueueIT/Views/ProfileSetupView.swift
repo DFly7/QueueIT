@@ -18,6 +18,7 @@ struct ProfileSetupView: View {
     @State private var errorMessage: String?
     @State private var showSpotifyComingSoon = false
     @State private var applePermissionGranted = false
+    @State private var validationError: ValidationError?
     
     enum MusicProvider: String, CaseIterable {
         case apple = "apple"
@@ -99,17 +100,27 @@ struct ProfileSetupView: View {
                                     .fill(Color.white.opacity(0.1))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                                            .stroke(validationError != nil ? Color.red.opacity(0.5) : Color.cyan.opacity(0.3), lineWidth: 1)
                                     )
                             )
                             .foregroundColor(.white)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.never)
+                            .onChange(of: username) { _, _ in
+                                // Clear validation error when user starts typing
+                                if validationError != nil {
+                                    validationError = nil
+                                }
+                            }
                         
-                        if !username.isEmpty && username.count < 3 {
-                            Text("Username must be at least 3 characters")
-                                .font(.caption)
-                                .foregroundColor(.red.opacity(0.8))
+                        if let validationError = validationError {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .foregroundColor(.red.opacity(0.8))
+                                Text(validationError.localizedDescription)
+                                    .font(.caption)
+                                    .foregroundColor(.red.opacity(0.8))
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -223,8 +234,16 @@ struct ProfileSetupView: View {
     private func completeSetup() async {
         guard isFormValid, let provider = selectedProvider else { return }
         
+        // Validate username before proceeding
+        if let error = Validator.validateUsername(username) {
+            validationError = error
+            HapticFeedback.error()
+            return
+        }
+        
         isProcessing = true
         errorMessage = nil
+        validationError = nil
         
         do {
             // Detect storefront if Apple Music
@@ -266,17 +285,48 @@ struct ProfileSetupView: View {
                     try await authService.loadProfile(userId: userId)
                 }
             } else {
-                let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
+                // Parse backend error response
+                let errorText = parseBackendError(data: data, statusCode: httpResponse.statusCode)
+                await MainActor.run {
+                    HapticFeedback.error()
+                }
                 throw NSError(domain: "ProfileSetup", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorText])
             }
             
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
+                HapticFeedback.error()
             }
         }
         
         isProcessing = false
+    }
+    
+    private func parseBackendError(data: Data, statusCode: Int) -> String {
+        // Try to parse JSON error response
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // Check for "error" field (from exception handlers)
+            if let errorMsg = json["error"] as? String {
+                return errorMsg
+            }
+            // Check for "detail" field (from HTTPException)
+            if let detail = json["detail"] as? String {
+                return detail
+            }
+        }
+        
+        // Fallback to raw text
+        if let errorText = String(data: data, encoding: .utf8), !errorText.isEmpty {
+            return errorText
+        }
+        
+        // Generic error based on status code
+        switch statusCode {
+        case 400: return "Invalid username format"
+        case 409: return "Username already taken"
+        default: return "Failed to update profile"
+        }
     }
 }
 

@@ -14,6 +14,7 @@ struct JoinSessionView: View {
     @State private var joinCode: String = ""
     @State private var isJoining: Bool = false
     @State private var appeared = false
+    @State private var validationError: ValidationError?
     
     var body: some View {
         NavigationView {
@@ -61,13 +62,33 @@ struct JoinSessionView: View {
                                 .overlay(
                                     RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSm)
                                         .stroke(
-                                            !joinCode.isEmpty ? AppTheme.coral.opacity(0.5) : Color.white.opacity(0.1),
+                                            validationError != nil ? Color.red.opacity(0.5) : (!joinCode.isEmpty ? AppTheme.coral.opacity(0.5) : Color.white.opacity(0.1)),
                                             lineWidth: 1
                                         )
                                 )
                                 .cornerRadius(AppTheme.cornerRadiusSm)
                                 .autocapitalization(.none)
                                 .disableAutocorrection(true)
+                                .onChange(of: joinCode) { _, _ in
+                                    // Clear validation error when user starts typing
+                                    if validationError != nil {
+                                        validationError = nil
+                                    }
+                                    // Clear session coordinator error
+                                    if sessionCoordinator.error != nil {
+                                        sessionCoordinator.error = nil
+                                    }
+                                }
+                            
+                            if let validationError = validationError {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(AppTheme.coral)
+                                    Text(validationError.localizedDescription)
+                                        .font(AppTheme.caption())
+                                        .foregroundColor(AppTheme.coral)
+                                }
+                            }
                         }
                         .padding(.horizontal, AppTheme.spacingXl)
                         .padding(.top, 8)
@@ -147,13 +168,21 @@ struct JoinSessionView: View {
     }
     
     private var isValidJoinCode: Bool {
-        !joinCode.isEmpty
+        Validator.validateJoinCode(joinCode) == nil
     }
     
     private func joinSession() {
+        // Validate join code first
+        if let error = Validator.validateJoinCode(joinCode) {
+            validationError = error
+            HapticFeedback.error()
+            return
+        }
+        
+        validationError = nil
         isJoining = true
         Task {
-            await sessionCoordinator.joinSession(joinCode: joinCode)
+            await sessionCoordinator.joinSession(joinCode: joinCode.trimmingCharacters(in: .whitespaces))
             isJoining = false
         }
     }

@@ -167,7 +167,26 @@ struct AppClipRootView: View {
 
     private func joinWithCode(_ code: String) async {
         sessionCoordinator.pendingJoinCode = nil
-        await sessionCoordinator.joinSession(joinCode: code)
+        
+        // Validate join code from QR/deep link before attempting to join
+        let trimmedCode = code.trimmingCharacters(in: .whitespaces)
+        if let validationError = Validator.validateJoinCode(trimmedCode) {
+            await MainActor.run {
+                initError = validationError.localizedDescription
+                HapticFeedback.error()
+            }
+            return
+        }
+        
+        await sessionCoordinator.joinSession(joinCode: trimmedCode)
+        
+        // Check if join failed
+        if sessionCoordinator.error != nil {
+            await MainActor.run {
+                initError = sessionCoordinator.error
+                HapticFeedback.error()
+            }
+        }
     }
 }
 

@@ -65,7 +65,7 @@ class SongMatchingService:
         Resolve a Spotify track to Apple Music catalog.
         
         Hierarchy:
-        1. ISRC matching (high confidence ~95%)
+        1. ISRC matching with album name preference (high confidence ~95%)
         2. Fuzzy metadata search with duration validation (medium confidence)
         3. Return None if no match
         
@@ -88,6 +88,7 @@ class SongMatchingService:
         title = spotify_track.get("name", "Unknown")
         duration_ms = spotify_track.get("duration_ms", 0)
         isrc = spotify_track.get("external_ids", {}).get("isrc")
+        spotify_album = spotify_track.get("album", {}).get("name", "")
         
         apple_service = get_apple_music_service()
         
@@ -96,15 +97,19 @@ class SongMatchingService:
             logger.info("Attempting ISRC match", extra={
                 "isrc": isrc,
                 "spotify_id": spotify_id,
+                "spotify_album": spotify_album,
                 "storefront": storefront
             })
             
-            apple_song = await apple_service.search_by_isrc(isrc, storefront)
+            apple_song = await apple_service.search_by_isrc(isrc, storefront, spotify_album)
             if apple_song:
                 apple_id = apple_song["id"]
+                apple_album = apple_song.get("attributes", {}).get("albumName", "")
                 logger.info("✅ ISRC match successful", extra={
                     "spotify_id": spotify_id,
                     "apple_id": apple_id,
+                    "spotify_album": spotify_album,
+                    "apple_album": apple_album,
                     "method": "isrc"
                 })
                 return (apple_id, "isrc")

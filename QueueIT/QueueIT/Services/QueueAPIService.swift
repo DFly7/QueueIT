@@ -81,7 +81,7 @@ class QueueAPIService {
         }
         
         guard 200..<300 ~= http.statusCode else {
-            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            let errorMessage = parseErrorResponse(data: data, statusCode: http.statusCode)
             throw APIError.serverError(statusCode: http.statusCode, message: errorMessage)
         }
         
@@ -110,6 +110,62 @@ class QueueAPIService {
         }
         
         return try decoder.decode(T.self, from: data)
+    }
+    
+    private func parseErrorResponse(data: Data, statusCode: Int) -> String {
+        // Try to parse JSON error response from backend
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // Check for "error" field (from custom exception handlers like duplicate join code)
+            if let errorMsg = json["error"] as? String {
+                return errorMsg
+            }
+            
+            // Check for "detail" field (from FastAPI HTTPException)
+            if let detail = json["detail"] as? String {
+                return detail
+            }
+            
+            // Check for validation errors (422 from Pydantic)
+            if statusCode == 422, let validationErrors = json["detail"] as? [[String: Any]] {
+                let messages = validationErrors.compactMap { error -> String? in
+                    if let msg = error["msg"] as? String {
+                        return msg
+                    }
+                    return nil
+                }
+                if !messages.isEmpty {
+                    return messages.joined(separator: ", ")
+                }
+            }
+        }
+        
+        // Fallback to raw text if JSON parsing fails
+        if let errorText = String(data: data, encoding: .utf8), !errorText.isEmpty {
+            // Try to clean up common patterns
+            if errorText.contains("detail") {
+                return errorText
+            }
+        }
+        
+        // User-friendly messages based on status code
+        switch statusCode {
+        case 400:
+            return "Invalid request. Please check your input and try again."
+        case 401:
+            return "Authentication failed. Please sign in again."
+        case 403:
+            return "You don't have permission to do that."
+        case 404:
+            return "Couldn't find that session. Check the code and try again."
+        case 409:
+            return "This join code is already taken. Try another!"
+        case 422:
+            return "Invalid input format. Please check your details."
+        case 500:
+            return "Server error. Please try again later."
+        default:
+            return "Something went wrong. Please try again."
+        }
     }
     
     // MARK: - Sessions API
@@ -231,11 +287,17 @@ enum APIError: Error, LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .invalidURL: return "Invalid URL"
-        case .invalidResponse: return "Invalid server response"
-        case .serverError(let statusCode, let message): return "Server error (\(statusCode)): \(message)"
-        case .decodingError: return "Failed to decode response"
-        case .unauthorized: return "Unauthorized. Please sign in again."
+        case .invalidURL:
+            return "Invalid URL"
+        case .invalidResponse:
+            return "Invalid server response"
+        case .serverError(let statusCode, let message):
+            // Return the parsed message directly (already user-friendly)
+            return message
+        case .decodingError:
+            return "Failed to decode response"
+        case .unauthorized:
+            return "Session expired. Please sign in again."
         }
     }
 }

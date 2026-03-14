@@ -105,13 +105,25 @@ class SessionCoordinator: ObservableObject {
         error = nil
         defer { isLoading = false }
         
+        // Validate join code before API call
+        if let validationError = Validator.validateJoinCode(joinCode) {
+            await MainActor.run {
+                self.error = validationError.localizedDescription
+                HapticFeedback.error()
+            }
+            return
+        }
+        
         do {
             let session = try await apiService.createSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
             connectRealtime()
         } catch {
-            self.error = error.localizedDescription
+            await MainActor.run {
+                self.error = error.localizedDescription
+                HapticFeedback.error()
+            }
         }
     }
     
@@ -120,13 +132,25 @@ class SessionCoordinator: ObservableObject {
         error = nil
         defer { isLoading = false }
         
+        // Validate join code before API call
+        if let validationError = Validator.validateJoinCode(joinCode) {
+            await MainActor.run {
+                self.error = validationError.localizedDescription
+                HapticFeedback.error()
+            }
+            return
+        }
+        
         do {
             let session = try await apiService.joinSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
             connectRealtime()
         } catch {
-            self.error = error.localizedDescription
+            await MainActor.run {
+                self.error = error.localizedDescription
+                HapticFeedback.error()
+            }
         }
     }
     
