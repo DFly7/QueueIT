@@ -14,6 +14,7 @@ struct SessionView: View {
     @State private var showingHostControls = false
     @State private var showingInvite = false
     @State private var appeared = false
+    @Namespace private var queueNamespace
     
     /// True if the current user has Apple Music connected
     private var usesAppleMusic: Bool {
@@ -214,10 +215,11 @@ struct SessionView: View {
                 VStack(spacing: 10) {
                     ForEach(sessionCoordinator.queue) { queuedSong in
                         QueueItemCard(queuedSong: queuedSong)
+                            .matchedGeometryEffect(id: queuedSong.id, in: queueNamespace)
                     }
                 }
                 .animation(
-                    .spring(duration: 0.5, bounce: 0.25),
+                    .spring(duration: 0.4, bounce: 0.2),
                     value: sessionCoordinator.queue.map(\.id)
                 )
             }

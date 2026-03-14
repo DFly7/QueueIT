@@ -18,6 +18,7 @@ struct AppClipGuestQueueView: View {
     @State private var showingSearch = false
     @State private var showingInvite = false
     @State private var appeared = false
+    @Namespace private var queueNamespace
 
     var body: some View {
         ZStack {
@@ -183,12 +184,17 @@ struct AppClipGuestQueueView: View {
             if sessionCoordinator.queue.isEmpty {
                 emptyQueueView
             } else {
-                LazyVStack(spacing: 10) {
+                VStack(spacing: 10) {
                     ForEach(sessionCoordinator.queue) { song in
                         QueueItemCard(queuedSong: song)
                             .environmentObject(sessionCoordinator)
+                            .matchedGeometryEffect(id: song.id, in: queueNamespace)
                     }
                 }
+                .animation(
+                    .spring(duration: 0.4, bounce: 0.2),
+                    value: sessionCoordinator.queue.map(\.id)
+                )
             }
         }
     }
