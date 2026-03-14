@@ -28,8 +28,8 @@ struct QueueItemCard: View {
     }
     
     var body: some View {
-        HStack(spacing: 14) {
-            // Album art
+        HStack(spacing: 12) {
+            // Album art (slightly smaller)
             ZStack {
                 if let imageUrl = queuedSong.song.imageUrl {
                     AsyncImage(url: imageUrl) { image in
@@ -37,108 +37,119 @@ struct QueueItemCard: View {
                     } placeholder: {
                         Color.white.opacity(0.08)
                     }
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
                     ZStack {
                         Color.white.opacity(0.08)
                         Image(systemName: "music.note")
+                            .font(.system(size: 14))
                             .foregroundColor(.white.opacity(0.4))
                     }
-                    .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .frame(width: 52, height: 52)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
                 
                 // Pending indicator overlay
                 if isPending {
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 8)
                         .fill(Color.black.opacity(0.5))
-                        .frame(width: 56, height: 56)
+                        .frame(width: 52, height: 52)
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: AppTheme.neonCyan))
-                        .scaleEffect(0.8)
+                        .scaleEffect(0.7)
                 }
             }
             
             // Track info
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(queuedSong.song.name)
-                        .font(AppTheme.body())
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(isPending ? .white.opacity(0.6) : .white)
                         .lineLimit(1)
                     
                     if isPending {
                         Text("Adding...")
-                            .font(AppTheme.monoSmall())
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
                             .foregroundColor(AppTheme.neonCyan)
                     }
                 }
                 
                 Text(queuedSong.song.artists)
-                    .font(AppTheme.caption())
-                    .foregroundColor(.white.opacity(isPending ? 0.4 : 0.6))
+                    .font(.system(size: 13))
+                    .foregroundColor(.white.opacity(isPending ? 0.4 : 0.55))
                     .lineLimit(1)
                 
-                HStack(spacing: 6) {
+                // Duration
+                HStack(spacing: 4) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.35))
                     Text(queuedSong.song.durationFormatted)
-                        .font(AppTheme.monoSmall())
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(.white.opacity(0.4))
-
-                    Text("•")
-                        .foregroundColor(.white.opacity(0.3))
-
+                }
+                
+                // Added by (on separate line)
+                HStack(spacing: 3) {
+                    Image(systemName: queuedSong.addedBy.isAnonymous ? "person.fill.questionmark" : "person.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.35))
+                    
                     Text(queuedSong.addedBy.username ?? "Unknown")
-                        .font(AppTheme.monoSmall())
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.4))
-
+                        .lineLimit(1)
+                    
                     if queuedSong.addedBy.isAnonymous {
                         Text("GUEST")
                             .font(.system(size: 8, weight: .bold, design: .rounded))
-                            .foregroundColor(AppTheme.neonCyan.opacity(0.7))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(AppTheme.neonCyan.opacity(0.12))
-                            .cornerRadius(4)
+                            .foregroundColor(AppTheme.neonCyan)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1.5)
+                            .background(AppTheme.neonCyan.opacity(0.15))
+                            .cornerRadius(3)
                     }
                 }
             }
             
             Spacer(minLength: 8)
             
-            // Vote controls (disabled for pending songs)
+            // Vote controls (disabled for pending songs, more compact)
             if !isPending {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Button(action: { vote(value: -1) }) {
                         Image(systemName: userVote == -1 ? "arrow.down.circle.fill" : "arrow.down")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(userVote == -1 ? AppTheme.coral : .white.opacity(0.6))
-                            .frame(width: 36, height: 36)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(userVote == -1 ? AppTheme.coral : .white.opacity(0.55))
+                            .frame(width: 32, height: 32)
                             .background(userVote == -1 ? AppTheme.coral.opacity(0.2) : Color.white.opacity(0.08))
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
                     
                     Text("\(displayedVotes)")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(voteColor)
-                        .frame(minWidth: 28)
+                        .frame(minWidth: 24)
                         .scaleEffect(voteAnimation ? 1.25 : 1.0)
                         .animation(AppTheme.bouncyAnimation, value: voteAnimation)
                     
                     Button(action: { vote(value: 1) }) {
                         Image(systemName: userVote == 1 ? "arrow.up.circle.fill" : "arrow.up")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(userVote == 1 ? AnyShapeStyle(AppTheme.neonCyan) : AnyShapeStyle(AppTheme.primaryGradient))
-                            .frame(width: 36, height: 36)
-                            .background(AppTheme.neonCyan.opacity(userVote == 1 ? 0.3 : 0.15))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(userVote == 1 ? AnyShapeStyle(AppTheme.neonCyan) : AnyShapeStyle(AppTheme.primaryGradient.opacity(0.7)))
+                            .frame(width: 32, height: 32)
+                            .background(AppTheme.neonCyan.opacity(userVote == 1 ? 0.3 : 0.12))
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding(AppTheme.spacing)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frostedCard()
         .opacity(isPending ? 0.8 : 1.0)
     }

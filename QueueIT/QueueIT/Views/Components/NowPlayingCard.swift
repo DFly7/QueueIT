@@ -138,9 +138,30 @@ struct NowPlayingCard: View {
             }
             .padding(.top, 8)
             
-            Text("Added by \(queuedSong.addedBy.username ?? "Unknown")")
-                .font(AppTheme.caption())
-                .foregroundColor(.white.opacity(0.4))
+            // Added by section with guest badge
+            HStack(spacing: 6) {
+                Image(systemName: queuedSong.addedBy.isAnonymous ? "person.fill.questionmark" : "person.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(.white.opacity(0.35))
+                
+                Text("Added by")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.4))
+                
+                Text(queuedSong.addedBy.username ?? "Unknown")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.6))
+                
+                if queuedSong.addedBy.isAnonymous {
+                    Text("GUEST")
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
+                        .foregroundColor(AppTheme.neonCyan)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.neonCyan.opacity(0.15))
+                        .cornerRadius(4)
+                }
+            }
         }
         .padding(AppTheme.spacingLg)
         .frostedCard()

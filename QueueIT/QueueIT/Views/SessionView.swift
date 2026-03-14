@@ -211,7 +211,7 @@ struct SessionView: View {
             if sessionCoordinator.queue.isEmpty {
                 emptyQueue
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     ForEach(sessionCoordinator.queue) { queuedSong in
                         QueueItemCard(queuedSong: queuedSong)
                     }
