@@ -36,6 +36,9 @@ class QueueRepository:
                     "added_by_id": added_by_id,
                     "status": status,
                     "song_external_id": song_external_id,
+                    # New songs start at 0 votes and are treated as "gainers"
+                    # so they sort to the bottom of the 0-vote tier (behind stable songs).
+                    "entered_tier_by_gain": True,
                 },
                 returning="representation"
             )
@@ -87,7 +90,13 @@ class QueueRepository:
         - song (from 'songs')
         - added_by (from 'users')
         - votes (sum of vote_value from 'votes')
-        Sorted by votes desc, created_at asc.
+
+        Sort order (asymmetric tier sort):
+          1. votes DESC — higher-voted songs first
+          2. entered_tier_by_gain ASC — losers (False) before gainers (True)
+          3. Within losers: last_entered_tier_at DESC — most recent loss at top
+             Within gainers: last_entered_tier_at ASC — oldest gain first (newest at bottom)
+          4. added_at ASC — tie-breaker: earlier added song wins
         """
         queued_resp = (
             self.client
@@ -110,7 +119,8 @@ class QueueRepository:
         users_by_id = self._fetch_users_map(user_ids)
         votes_sum_by_queued = self._fetch_votes_sum_map(queued_ids)
 
-        # Build view rows
+        # Build view rows — include tier metadata from the DB row.
+        # Note: the live DB column is "created_at"; we expose it as "added_at" in the view.
         view_rows: List[Dict[str, Any]] = []
         for row in queued_rows:
             view_rows.append(
@@ -121,11 +131,22 @@ class QueueRepository:
                     "votes": votes_sum_by_queued.get(row["id"], 0),
                     "song": songs_by_id.get(row["song_external_id"]),
                     "added_by": users_by_id.get(row["added_by_id"]),
+                    "last_entered_tier_at": row.get("last_entered_tier_at"),
+                    "entered_tier_by_gain": row.get("entered_tier_by_gain", True),
                 }
             )
 
-        # Sort by votes desc, then created_at asc
-        view_rows.sort(key=lambda r: (-int(r["votes"]), r["added_at"]))
+        def _tier_sort_key(r: Dict[str, Any]) -> tuple:
+            votes = -int(r["votes"])
+            by_gain: bool = r.get("entered_tier_by_gain", True)
+            ts = r.get("last_entered_tier_at") or r["added_at"]
+            ts_val: float = ts.timestamp() if hasattr(ts, "timestamp") else 0.0
+            # Losers (by_gain=False): most recent at top → negate ts so DESC
+            # Gainers (by_gain=True): most recent at bottom → leave ts ascending
+            secondary = ts_val if by_gain else -ts_val
+            return (votes, by_gain, secondary, r["added_at"])
+
+        view_rows.sort(key=_tier_sort_key)
         return view_rows
 
     # --- Voting ---

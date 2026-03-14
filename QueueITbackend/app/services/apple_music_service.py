@@ -29,7 +29,6 @@ def _is_compilation_album(album_name: str) -> bool:
     album_lower = album_name.lower()
     compilation_patterns = [
         "now that's what i call",
-        "now that's what i call music",
         "greatest hits",
         "best of",
         "the best of",
@@ -45,8 +44,24 @@ def _is_compilation_album(album_name: str) -> bool:
         "complete",
         "top 40",
         "chart",
-        "hits of",
-        "ministry of sound"
+        "ministry of sound",
+        # Generic playlist/compilation patterns
+        "music 20",  # Breakfast Music 2026, Happy Café Music, etc.
+        "songs 20",  # Wedding Songs 2026, etc.
+        "hits 20",   # Hits 2026, etc.
+        "vibes 20",  # Happy Vibes 2026, etc.
+        "club",      # GIRLS CLUB, Kids Club, etc.
+        "party 20",  # Bridal Party 2026, etc.
+        "morning",   # Morning Glow, Spring Morning, etc.
+        "coffeehouse",
+        "café music",
+        "study motivation",
+        "workout",
+        "romantic",
+        "love songs",
+        "feel good",
+        "chill",
+        "relax"
     ]
     return any(pattern in album_lower for pattern in compilation_patterns)
 
@@ -258,6 +273,9 @@ class AppleMusicService:
                 scored_results.sort(key=lambda x: x["score"], reverse=True)
                 
                 best_match = scored_results[0]
+                
+                # Log all scores if we have many results or if best match is low scoring
+                log_all = len(results) > 10 or best_match["score"] < 100
                 logger.info("Selected best Apple Music match", extra={
                     "isrc": isrc,
                     "apple_id": best_match["result"]["id"],
@@ -265,7 +283,7 @@ class AppleMusicService:
                     "album": best_match["album"],
                     "score": best_match["score"],
                     "reasons": best_match["reasons"],
-                    "all_scores": [(s["album"], s["score"], s["reasons"]) for s in scored_results[:3]]
+                    "all_scores": [(s["album"], s["score"], s["reasons"]) for s in (scored_results if log_all else scored_results[:3])]
                 })
                 
                 return best_match["result"]

@@ -25,24 +25,34 @@ struct SessionBase: Codable, Identifiable, Hashable {
 }
 
 // MARK: - QueuedSongResponse
-struct QueuedSongResponse: Codable, Identifiable, Hashable {
+struct QueuedSongResponse: Identifiable, Hashable {
     let id: UUID
     let status: String
     let addedAt: Date
     var votes: Int
     let song: Track
     let addedBy: User
-    
+
+    /// When this song last moved into its current vote count (set by DB trigger).
+    var lastEnteredTierAt: Date? = nil
+    /// True = entered tier by gaining a vote (sorts to bottom of tier).
+    /// False = entered by losing a vote (sorts to top of tier).
+    var enteredTierByGain: Bool = true
+
     var isPending: Bool {
         status == "pending"
     }
-    
+
     func withOptimisticVotes(_ newVotes: Int) -> QueuedSongResponse {
         var copy = self
         copy.votes = newVotes
         return copy
     }
-    
+}
+
+// Custom Codable conformance in an extension so the compiler still generates
+// the memberwise initializer on the struct (needed for optimistic pending songs).
+extension QueuedSongResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case id
         case status
@@ -50,6 +60,21 @@ struct QueuedSongResponse: Codable, Identifiable, Hashable {
         case votes
         case song
         case addedBy = "added_by"
+        case lastEnteredTierAt = "last_entered_tier_at"
+        case enteredTierByGain = "entered_tier_by_gain"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        status = try container.decode(String.self, forKey: .status)
+        addedAt = try container.decode(Date.self, forKey: .addedAt)
+        votes = try container.decode(Int.self, forKey: .votes)
+        song = try container.decode(Track.self, forKey: .song)
+        addedBy = try container.decode(User.self, forKey: .addedBy)
+        lastEnteredTierAt = try container.decodeIfPresent(Date.self, forKey: .lastEnteredTierAt)
+        // Default to true (gainer) when field is absent — safe for older API responses
+        enteredTierByGain = try container.decodeIfPresent(Bool.self, forKey: .enteredTierByGain) ?? true
     }
 }
 

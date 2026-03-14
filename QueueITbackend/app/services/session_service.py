@@ -46,6 +46,8 @@ def _map_queue_item_to_schema(item: Dict[str, Any]) -> QueuedSongResponse:
         votes=int(item["votes"]),
         song=track,
         added_by=added_by,
+        last_entered_tier_at=item.get("last_entered_tier_at"),
+        entered_tier_by_gain=item.get("entered_tier_by_gain", True),
     )
 
 

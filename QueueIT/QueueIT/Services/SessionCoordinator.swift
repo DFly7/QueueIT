@@ -29,7 +29,12 @@ class SessionCoordinator: ObservableObject {
     @Published var optimisticSkip: Bool = false  // Track being skipped
     /// Set by URL/deep link handling; consumed by JoinSessionView or App Clip root view
     @Published var pendingJoinCode: String?
-    
+
+    // Optimistic tier metadata: set when a vote is in-flight so the within-tier
+    // position is immediately correct without waiting for the server.
+    // Cleared when the server confirms the vote and votesInFlight removes the song.
+    private var optimisticTierMetadata: [UUID: (byGain: Bool, at: Date)] = [:]
+
     private var votesInFlight: Set<UUID> = []  // Songs currently being voted on - don't overwrite from server
     private var pendingVoteValues: [UUID: Int] = [:]  // Queued vote values to send after current in-flight completes
     
@@ -59,23 +64,63 @@ class SessionCoordinator: ObservableObject {
         let currentId = currentSession?.currentSong?.id
         // Only show songs that are "queued" (not played or skipped)
         var filtered = q.filter { $0.id != currentId && $0.status == "queued" }
-        
-        // Sort by displayed vote counts (descending), then by addedAt (ascending) for ties
-        filtered.sort { song1, song2 in
-            let votes1 = displayedVoteCounts[song1.id] ?? song1.votes
-            let votes2 = displayedVoteCounts[song2.id] ?? song2.votes
-            if votes1 != votes2 {
-                return votes1 > votes2  // Higher votes first
-            }
-            return song1.addedAt < song2.addedAt  // Earlier added first for ties
+
+        // Step 1: Sort everything using server-authoritative tier data.
+        // Within each vote tier:
+        //   - Losers (enteredTierByGain == false) first, newest first
+        //   - Gainers (enteredTierByGain == true) after, newest last
+        //   - Tie-breaker: addedAt ascending
+        filtered.sort { s1, s2 in
+            let v1 = displayedVoteCounts[s1.id] ?? s1.votes
+            let v2 = displayedVoteCounts[s2.id] ?? s2.votes
+            if v1 != v2 { return v1 > v2 }
+            if s1.enteredTierByGain != s2.enteredTierByGain { return !s1.enteredTierByGain }
+            let t1 = s1.lastEnteredTierAt ?? s1.addedAt
+            let t2 = s2.lastEnteredTierAt ?? s2.addedAt
+            if t1 != t2 { return s1.enteredTierByGain ? t1 < t2 : t1 > t2 }
+            return s1.addedAt < s2.addedAt
         }
-        
-        // Add pending songs at the end (they have 0 votes and are newest)
+
+        // Step 2: For any song with optimistic tier metadata, pull it out of its
+        // sorted position and drop it at the top or bottom of its target tier group.
+        // We iterate optimisticTierMetadata (not votesInFlight) because the metadata
+        // persists until the session refresh arrives — votesInFlight is cleared as
+        // soon as the POST /vote returns, which is before GET /sessions/current lands.
+        for (songId, meta) in optimisticTierMetadata {
+            guard let fromIdx = filtered.firstIndex(where: { $0.id == songId }) else { continue }
+
+            let song = filtered.remove(at: fromIdx)
+            let targetVotes = displayedVoteCounts[songId] ?? song.votes
+
+            let insertAt: Int
+            if meta.byGain {
+                // Gained a vote → bottom of its tier group
+                insertAt = filtered.lastIndex(where: {
+                    (displayedVoteCounts[$0.id] ?? $0.votes) == targetVotes
+                }).map { $0 + 1 }
+                ?? filtered.firstIndex(where: {
+                    (displayedVoteCounts[$0.id] ?? $0.votes) < targetVotes
+                })
+                ?? filtered.endIndex
+            } else {
+                // Lost a vote → top of its tier group
+                insertAt = filtered.firstIndex(where: {
+                    (displayedVoteCounts[$0.id] ?? $0.votes) == targetVotes
+                })
+                ?? filtered.firstIndex(where: {
+                    (displayedVoteCounts[$0.id] ?? $0.votes) < targetVotes
+                })
+                ?? filtered.endIndex
+            }
+            filtered.insert(song, at: insertAt)
+        }
+
+        // Pending songs (being added) always go at the end
         let newPending = pendingSongs.filter { pending in
             !filtered.contains(where: { $0.song.id == pending.song.id })
         }
         filtered.append(contentsOf: newPending)
-        
+
         return filtered
     }
     
@@ -169,16 +214,21 @@ class SessionCoordinator: ObservableObject {
     }
     
     private func populateDisplayedVoteCounts(from session: CurrentSessionResponse) {
-        // Populate displayed vote counts from session data
-        // Skip any songs that have a vote in-flight to avoid race conditions
+        // Populate displayed vote counts from session data.
+        // Skip songs with a vote in-flight to avoid overwriting the optimistic count.
+        // For songs that are NOT in-flight, also clear their optimistic tier metadata —
+        // the server response now has the correct enteredTierByGain / lastEnteredTierAt
+        // so there is no longer a gap that would cause a wrong-position snap.
         if let currentSong = session.currentSong {
             if !votesInFlight.contains(currentSong.id) {
                 displayedVoteCounts[currentSong.id] = currentSong.votes
+                optimisticTierMetadata.removeValue(forKey: currentSong.id)
             }
         }
         for queuedSong in session.queue {
             if !votesInFlight.contains(queuedSong.id) {
                 displayedVoteCounts[queuedSong.id] = queuedSong.votes
+                optimisticTierMetadata.removeValue(forKey: queuedSong.id)
             }
         }
     }
@@ -199,6 +249,7 @@ class SessionCoordinator: ObservableObject {
             currentSession = nil
             userVotes = [:]
             displayedVoteCounts = [:]
+            optimisticTierMetadata = [:]
             pendingVoteValues = [:]
             votesInFlight = []
             pendingSongs = []
@@ -289,6 +340,9 @@ class SessionCoordinator: ObservableObject {
             pendingVoteValues[songId] = targetValue
             if let currentDisplayed = displayedVoteCounts[songId] {
                 let delta = targetValue - previousUserVote
+                if delta != 0 {
+                    optimisticTierMetadata[songId] = (byGain: delta > 0, at: Date())
+                }
                 withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
                     displayedVoteCounts[songId] = currentDisplayed + delta
                 }
@@ -303,15 +357,20 @@ class SessionCoordinator: ObservableObject {
     private func sendVote(songId: UUID, value: Int, previousUserVote: Int, originalVotes: Int) async {
         // Mark vote as in-flight
         votesInFlight.insert(songId)
-        
-        // Calculate optimistic display
+
+        // Calculate optimistic display and tier metadata
         let baseVotes = displayedVoteCounts[songId] ?? originalVotes
         let delta = value - previousUserVote
         let optimisticCount = baseVotes + delta
+        if delta != 0 {
+            // Set tier metadata immediately so within-tier position is correct
+            // without waiting for the server (avoids snap when song crosses tiers)
+            optimisticTierMetadata[songId] = (byGain: delta > 0, at: Date())
+        }
         withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
             displayedVoteCounts[songId] = optimisticCount
         }
-        
+
         // Send to server
         do {
             let response: VoteResponse
@@ -322,7 +381,7 @@ class SessionCoordinator: ObservableObject {
                 // Add or change vote
                 response = try await apiService.vote(queuedSongId: songId, voteValue: value)
             }
-            
+
             // Update with server's authoritative total
             withAnimation(.spring(duration: 0.5, bounce: 0.25)) {
                 displayedVoteCounts[songId] = response.totalVotes
@@ -332,13 +391,15 @@ class SessionCoordinator: ObservableObject {
             // Just show whatever the server last told us (or keep optimistic)
             self.error = error.localizedDescription
         }
-        
-        // Remove from in-flight
+
+        // Remove from in-flight. Do NOT clear optimisticTierMetadata here —
+        // the session refresh (GET /sessions/current) hasn't arrived yet, so
+        // the server's enteredTierByGain is still stale in currentSession.
+        // populateDisplayedVoteCounts clears it once the fresh session data lands.
         votesInFlight.remove(songId)
-        
+
         // Check if there's a pending vote to send
         if let pendingValue = pendingVoteValues.removeValue(forKey: songId) {
-            let currentUserVote = userVotes[songId] ?? 0
             // Only send if the pending value is different from what we just sent
             if pendingValue != value {
                 await sendVote(songId: songId, value: pendingValue, previousUserVote: value, originalVotes: originalVotes)

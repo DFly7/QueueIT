@@ -30,13 +30,24 @@ class QueuedSongResponse(BaseModel):
 
     votes: int  
     song: TrackOut 
-    added_by: User 
+    added_by: User
+
+    # Tier sorting metadata — set by the DB trigger on the votes table
+    last_entered_tier_at: Optional[datetime.datetime] = None
+    entered_tier_by_gain: bool = True  # True = rose into tier; False = fell into tier
 
     @field_serializer('added_at')
     def serialize_datetime(self, dt: datetime.datetime, _info):
         """Ensure datetime always has timezone info for iOS compatibility"""
         if dt.tzinfo is None:
-            # If naive, assume UTC
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.isoformat()
+
+    @field_serializer('last_entered_tier_at')
+    def serialize_tier_datetime(self, dt: Optional[datetime.datetime], _info):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
         return dt.isoformat()
 
