@@ -1,6 +1,6 @@
 # app/schemas/session.py
 from pydantic import BaseModel, Field, ConfigDict, field_serializer
-from typing import Optional, List, Literal
+from typing import Dict, Optional, List, Literal
 import uuid
 import datetime
 
@@ -114,3 +114,7 @@ class CurrentSessionResponse(BaseModel):
     session: SessionBase
     current_song: Optional[QueuedSongResponse] = None
     queue: List[QueuedSongResponse]
+    # Map of queued_song_id (str) → vote_value (1 or -1) for the requesting user.
+    # Always a dict — never None — so the iOS client can safely iterate without
+    # Optional unwrapping. Empty dict means the user has no votes in this session.
+    my_votes: Dict[str, int] = {}

@@ -83,6 +83,16 @@ struct CurrentSessionResponse: Codable {
     let session: SessionBase
     var currentSong: QueuedSongResponse?
     var queue: [QueuedSongResponse]
+    /// The requesting user's votes in this session: queued_song_id → vote_value (1 or -1).
+    /// Empty dict when the user has no votes. Decoded from `my_votes` in the API response.
+    var myVotes: [UUID: Int]
+
+    init(session: SessionBase, currentSong: QueuedSongResponse?, queue: [QueuedSongResponse], myVotes: [UUID: Int] = [:]) {
+        self.session = session
+        self.currentSong = currentSong
+        self.queue = queue
+        self.myVotes = myVotes
+    }
     
     func withUpdatedVotes(for songId: UUID, votes: Int) -> CurrentSessionResponse {
         var copy = self
@@ -107,6 +117,20 @@ struct CurrentSessionResponse: Codable {
         case session
         case currentSong = "current_song"
         case queue
+        case myVotes = "my_votes"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        session = try container.decode(SessionBase.self, forKey: .session)
+        currentSong = try container.decodeIfPresent(QueuedSongResponse.self, forKey: .currentSong)
+        queue = try container.decode([QueuedSongResponse].self, forKey: .queue)
+        // my_votes arrives as {"<uuid-string>": 1, ...}; map string keys to UUID, drop malformed entries.
+        let rawVotes = try container.decodeIfPresent([String: Int].self, forKey: .myVotes) ?? [:]
+        myVotes = Dictionary(uniqueKeysWithValues: rawVotes.compactMap { key, value in
+            guard let uuid = UUID(uuidString: key) else { return nil }
+            return (uuid, value)
+        })
     }
 }
 

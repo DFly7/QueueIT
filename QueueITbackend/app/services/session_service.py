@@ -95,10 +95,15 @@ def get_current_session_for_user(auth: AuthenticatedClient) -> CurrentSessionRes
                     current_song_model = _map_queue_item_to_schema(it)
                     break
 
+    my_votes = queue_repo.get_user_votes_for_session(
+        session_id=session_row["id"], user_id=user_id
+    )
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(session_row, host_row),
         current_song=current_song_model,
         queue=queue_models,
+        my_votes=my_votes,
     )
 
 
@@ -147,6 +152,7 @@ def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateReq
         session=_map_session_to_schema(created, host_row),
         current_song=None,
         queue=[],
+        my_votes={},
     )
 
 
@@ -183,10 +189,15 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
                     current_song_model = _map_queue_item_to_schema(it)
                     break
 
+    my_votes = queue_repo.get_user_votes_for_session(
+        session_id=session_row["id"], user_id=user_id
+    )
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(session_row, host_row),
         current_song=current_song_model,
         queue=queue_models,
+        my_votes=my_votes,
     )
 
 

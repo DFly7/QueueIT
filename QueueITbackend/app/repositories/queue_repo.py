@@ -149,6 +149,20 @@ class QueueRepository:
         view_rows.sort(key=_tier_sort_key)
         return view_rows
 
+    # --- User vote hydration ---
+    def get_user_votes_for_session(self, *, session_id: str, user_id: str) -> Dict[str, int]:
+        """
+        Returns {queued_song_id: vote_value} for all songs the user has voted on
+        in the given session. Uses a PostgreSQL RPC for an efficient single-JOIN
+        query; SECURITY INVOKER ensures existing RLS policies still apply.
+        """
+        resp = self.client.rpc(
+            "get_user_votes_for_session",
+            {"p_session_id": session_id, "p_user_id": user_id},
+        ).execute()
+        rows: List[Dict[str, Any]] = resp.data or []
+        return {str(r["queued_song_id"]): int(r["vote_value"]) for r in rows}
+
     # --- Voting ---
     def vote_on_song(self, *, queued_song_id: str, user_id: str, vote_value: int) -> Dict[str, Any]:
         """

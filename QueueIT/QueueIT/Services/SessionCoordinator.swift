@@ -163,6 +163,7 @@ class SessionCoordinator: ObservableObject {
             let session = try await apiService.createSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
+            populateUserVotes(from: session)
             connectRealtime()
         } catch {
             await MainActor.run {
@@ -190,6 +191,7 @@ class SessionCoordinator: ObservableObject {
             let session = try await apiService.joinSession(joinCode: joinCode)
             currentSession = session
             populateDisplayedVoteCounts(from: session)
+            populateUserVotes(from: session)
             connectRealtime()
         } catch {
             await MainActor.run {
@@ -206,13 +208,32 @@ class SessionCoordinator: ObservableObject {
             let session = try await apiService.getCurrentSession()
             currentSession = session
             populateDisplayedVoteCounts(from: session)
-            // Note: we keep userVotes so button highlights persist
+            populateUserVotes(from: session)
             error = nil
         } catch {
             self.error = error.localizedDescription
         }
     }
     
+    private func populateUserVotes(from session: CurrentSessionResponse) {
+        // Build the set of song IDs still present in the session so stale entries can
+        // be pruned. Always union with votesInFlight so an in-flight vote is never removed
+        // mid-submit even if the session snapshot doesn't include it yet.
+        var validIds: Set<UUID> = Set(session.queue.map { $0.id })
+        if let currentId = session.currentSong?.id { validIds.insert(currentId) }
+        validIds.formUnion(votesInFlight)
+
+        // Merge server votes, skipping any song whose vote is still in-flight to
+        // avoid overwriting the optimistic value the user already sees.
+        for (songId, voteValue) in session.myVotes where !votesInFlight.contains(songId) {
+            userVotes[songId] = voteValue
+        }
+
+        // Prune votes for songs that have left the session (played, skipped, etc.)
+        // while keeping in-flight votes alive until they resolve.
+        userVotes = userVotes.filter { validIds.contains($0.key) }
+    }
+
     private func populateDisplayedVoteCounts(from session: CurrentSessionResponse) {
         // Populate displayed vote counts from session data.
         // Skip songs with a vote in-flight to avoid overwriting the optimistic count.
