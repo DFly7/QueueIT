@@ -12,6 +12,7 @@ struct SessionView: View {
     @EnvironmentObject var authService: AuthService
     @State private var showingSearch = false
     @State private var showingHostControls = false
+    @State private var showingInvite = false
     @State private var appeared = false
     
     /// True if the current user has Apple Music connected
@@ -81,16 +82,24 @@ struct SessionView: View {
                     }
                 }
                 
-                if sessionCoordinator.isHost {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button(action: { showingHostControls = true }) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppTheme.warning.opacity(0.2))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(AppTheme.warning)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    HStack(spacing: 12) {
+                        Button(action: { showingInvite = true }) {
+                            Image(systemName: "qrcode")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(AppTheme.primaryGradient)
+                        }
+
+                        if sessionCoordinator.isHost {
+                            Button(action: { showingHostControls = true }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(AppTheme.warning.opacity(0.2))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "crown.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(AppTheme.warning)
+                                }
                             }
                         }
                     }
@@ -107,6 +116,11 @@ struct SessionView: View {
             .sheet(isPresented: $showingHostControls) {
                 HostControlsView()
                     .environmentObject(sessionCoordinator)
+            }
+            .sheet(isPresented: $showingInvite) {
+                if let joinCode = sessionCoordinator.currentSession?.session.joinCode {
+                    InviteView(joinCode: joinCode)
+                }
             }
         }
         .onAppear {

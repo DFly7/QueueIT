@@ -1,14 +1,21 @@
+import Combine
 import Foundation
 import SwiftUI
 import Supabase
 
-@MainActor
+// Disambiguates our User model from Supabase's own User type.
+// Using a typealias keeps this working across both the main app and App Clip targets
+// (module-qualified names like QueueIT.User break in QueueITClip).
+typealias AppUser = User
+
 class AuthService: ObservableObject {
     @Published var isAuthenticated = false
-    @Published var currentUser: QueueIT.User? // Points to YOUR custom struct
+    @Published var currentUser: AppUser? // Points to our custom User struct
     @Published var needsProfileSetup = false // True if user needs to complete onboarding
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// True while the initial Supabase session restore is in progress (used by App Clip)
+    @Published var isCheckingInitialSession = true
 
 //    private let supabaseURL = URL(string: "YOUR_URL")!
 //    private let supabaseKey = "YOUR_KEY"
@@ -53,7 +60,7 @@ class AuthService: ObservableObject {
     func loadProfile(userId: UUID) async throws {
         do {
             // Fetch from your 'users' table in the 'public' schema
-            let profile: QueueIT.User = try await client
+            let profile: AppUser = try await client
                 .from("users")
                 .select()
                 .eq("id", value: userId)
@@ -118,6 +125,44 @@ class AuthService: ObservableObject {
         } catch {
             self.isAuthenticated = false
         }
+        self.isCheckingInitialSession = false
+    }
+    
+    // MARK: - Anonymous Auth (App Clip)
+
+    func signInAnonymously(displayName: String) async throws {
+        isLoading = true
+        defer { isLoading = false }
+
+        // Only reuse a restored session if it is already an anonymous one.
+        // A cached real-account session must NOT be reused for guest sign-in —
+        // the App Clip should always get its own anonymous identity.
+        if isAuthenticated, currentUser?.isAnonymous == true {
+            return
+        }
+
+        let session = try await client.auth.signInAnonymously()
+        let userId = session.user.id
+
+        struct AnonUserProfile: Encodable {
+            let id: UUID
+            let username: String
+            let music_provider: String
+            let is_anonymous: Bool
+        }
+
+        // Upsert profile — no-ops if the row already exists with the same id
+        try await client
+            .from("users")
+            .upsert(
+                AnonUserProfile(id: userId, username: displayName, music_provider: "none", is_anonymous: true),
+                onConflict: "id"
+            )
+            .execute()
+
+        try await loadProfile(userId: userId)
+        // Anonymous guests never need the full profile-setup flow
+        needsProfileSetup = false
     }
     
     func signOut() {

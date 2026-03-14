@@ -199,7 +199,7 @@ class QueueRepository:
         resp = (
             self.client
             .from_("users")
-            .select("id, username")
+            .select("id, username, is_anonymous")
             .in_("id", ids_list)
             .execute()
         )

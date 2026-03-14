@@ -12,17 +12,19 @@ class User(BaseModel):
     username: Optional[str] = Field(None, description="Username")
     music_provider: Optional[Literal["apple", "spotify", "none"]] = Field("none", description="Music streaming provider")
     storefront: Optional[str] = Field("us", description="Apple Music storefront/region")
+    is_anonymous: bool = Field(False, description="True for App Clip guests who signed in anonymously")
 
     class Config:
         from_attributes = True
-        populate_by_name = True 
-        
+        populate_by_name = True
+
         json_schema_extra = {
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
-                "username": "john_doe",
-                "music_provider": "apple",
-                "storefront": "us"
+                "username": "Neon Giraffe",
+                "music_provider": "none",
+                "storefront": "us",
+                "is_anonymous": True
             }
         }
 

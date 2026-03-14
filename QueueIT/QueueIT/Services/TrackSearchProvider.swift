@@ -6,7 +6,9 @@
 //
 
 import Foundation
+#if !APPCLIP
 import MusicKit
+#endif
 
 protocol TrackSearchProvider {
     /// Display name used in the navigation title, e.g. "Apple Music" or "Spotify Music"
@@ -30,8 +32,9 @@ struct SpotifyTrackSearchProvider: TrackSearchProvider {
     }
 }
 
-// MARK: - Apple Music Provider
+// MARK: - Apple Music Provider (excluded from App Clip — no MusicManager available)
 
+#if !APPCLIP
 struct AppleMusicTrackSearchProvider: TrackSearchProvider {
     var displayName: String { "Apple Music" }
     var shouldDebounce: Bool { false }
@@ -41,3 +44,4 @@ struct AppleMusicTrackSearchProvider: TrackSearchProvider {
         return songs.map { $0.toTrack() }
     }
 }
+#endif

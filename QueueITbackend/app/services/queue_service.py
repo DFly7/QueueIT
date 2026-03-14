@@ -25,7 +25,11 @@ def _map_queue_item(item: Dict[str, Any]) -> QueuedSongResponse:
         image_url=item["song"]["image_url"],
         source="apple_music" if item["song"].get("source") == "apple" else (item["song"].get("source") or "spotify"),
     )
-    added_by = User(id=item["added_by"]["id"], username=item["added_by"].get("username"))
+    added_by = User(
+        id=item["added_by"]["id"],
+        username=item["added_by"].get("username"),
+        is_anonymous=item["added_by"].get("is_anonymous", False),
+    )
     return QueuedSongResponse(
         id=item["id"],
         status=item["status"],

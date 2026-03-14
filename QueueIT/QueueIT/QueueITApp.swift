@@ -59,7 +59,52 @@ struct QueueITApp: App {
                 .environmentObject(authService)
                 .environmentObject(sessionCoordinator)
                 .preferredColorScheme(.dark) // Force dark mode for party aesthetic
+                // Handle custom URL scheme: queueit://join?code=X
+                .onOpenURL { url in
+                    if let code = parseJoinCode(from: url) {
+                        sessionCoordinator.pendingJoinCode = code
+                    } else {
+                        // Fall through to Supabase auth (magic link / OAuth)
+                        Task { await authService.handleIncomingURL(url) }
+                    }
+                }
+                // Handle Universal Links: https://queueit.app/join?code=X
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    guard let url = activity.webpageURL else { return }
+                    if let code = parseJoinCode(from: url) {
+                        sessionCoordinator.pendingJoinCode = code
+                    }
+                }
         }
         .modelContainer(sharedModelContainer)
+    }
+
+    // MARK: - URL Parsing
+
+    /// Parses a session join code from:
+    ///   • queueit://join?code=PARTY123
+    ///   • https://queueit.app/join?code=PARTY123
+    ///   • https://queueit.app/join/PARTY123
+    ///   • https://appclip.apple.com/id?p=…&code=PARTY123
+    private func parseJoinCode(from url: URL) -> String? {
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+
+        // Query-param style: ?code=X
+        if let code = components?.queryItems?.first(where: { $0.name == "code" })?.value {
+            return code
+        }
+
+        // Path style: /join/PARTY123
+        let path = url.pathComponents
+        if let idx = path.firstIndex(of: "join"), idx + 1 < path.count {
+            return path[idx + 1]
+        }
+
+        // Custom scheme host style: queueit://join  (host = "join", no path segment)
+        if url.scheme == "queueit", url.host == "join" {
+            return components?.queryItems?.first(where: { $0.name == "code" })?.value
+        }
+
+        return nil
     }
 }

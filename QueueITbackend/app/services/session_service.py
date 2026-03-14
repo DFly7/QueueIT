@@ -34,7 +34,11 @@ def _map_queue_item_to_schema(item: Dict[str, Any]) -> QueuedSongResponse:
         image_url=item["song"]["image_url"],
         source="apple_music" if item["song"].get("source") == "apple" else (item["song"].get("source") or "spotify"),
     )
-    added_by = User(id=item["added_by"]["id"], username=item["added_by"].get("username"))
+    added_by = User(
+        id=item["added_by"]["id"],
+        username=item["added_by"].get("username"),
+        is_anonymous=item["added_by"].get("is_anonymous", False),
+    )
     return QueuedSongResponse(
         id=item["id"],
         status=item["status"],
@@ -50,7 +54,11 @@ def _map_session_to_schema(session_row: Dict[str, Any], host_row: Dict[str, Any]
         id=session_row["id"],
         join_code=session_row["join_code"],
         created_at=session_row["created_at"],
-        host=User(id=host_row["id"], username=host_row.get("username")),
+        host=User(
+            id=host_row["id"],
+            username=host_row.get("username"),
+            is_anonymous=host_row.get("is_anonymous", False),
+        ),
     )
 
 
@@ -99,11 +107,18 @@ def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateReq
     session_repo = SessionRepository(client)
     user_repo = UserRepository(client)
 
-    # Get host user data to check music_provider
+    # Get host user data to check music_provider and anonymous status
     host_user = user_repo.get_by_id(user_id)
     if not host_user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # Anonymous (App Clip) users cannot host sessions
+    if host_user.get("is_anonymous", False):
+        raise HTTPException(
+            status_code=403,
+            detail="Guest users cannot create sessions. Install the full app to host."
+        )
+
     # Validate host has a music provider (not 'none')
     music_provider = host_user.get("music_provider", "none")
     if music_provider == "none":
@@ -155,9 +170,20 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
     queue_items = queue_repo.list_session_queue(session_row["id"])
     queue_models = [_map_queue_item_to_schema(i) for i in queue_items]
 
+    current_song_model: Optional[QueuedSongResponse] = None
+    if session_row.get("current_song"):
+        # resolve single queued song with joins
+        qs = queue_repo.get_queued_song(session_row["current_song"])
+        if qs:
+            # find the current song in queue_items
+            for it in queue_items:
+                if it["id"] == qs["id"]:
+                    current_song_model = _map_queue_item_to_schema(it)
+                    break
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(session_row, host_row),
-        current_song=None,
+        current_song=current_song_model,
         queue=queue_models,
     )
 

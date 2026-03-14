@@ -13,6 +13,7 @@ struct HostControlsView: View {
     
     @State private var isLocked: Bool = false
     @State private var showSkipConfirmation: Bool = false
+    @State private var showingInvite = false
     @State private var appeared = false
     
     var body: some View {
@@ -46,6 +47,30 @@ struct HostControlsView: View {
                         .padding(.bottom, 16)
                         
                         VStack(spacing: 14) {
+                            // Invite Friends
+                            Button(action: { showingInvite = true }) {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .fill(Color.white.opacity(0.08))
+                                            .frame(width: 44, height: 44)
+                                        Image(systemName: "qrcode")
+                                            .font(.system(size: 18))
+                                            .foregroundStyle(AppTheme.primaryGradient)
+                                    }
+                                    Text("Invite Friends")
+                                        .font(AppTheme.headline())
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white.opacity(0.4))
+                                }
+                                .padding(AppTheme.spacing)
+                                .frostedCard()
+                            }
+                            .buttonStyle(.plain)
+
                             Button(action: { showSkipConfirmation = true }) {
                                 HStack(spacing: 14) {
                                     ZStack {
@@ -150,6 +175,11 @@ struct HostControlsView: View {
         .onAppear {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 appeared = true
+            }
+        }
+        .sheet(isPresented: $showingInvite) {
+            if let joinCode = sessionCoordinator.currentSession?.session.joinCode {
+                InviteView(joinCode: joinCode)
             }
         }
         .confirmationDialog(

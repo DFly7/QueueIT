@@ -7,8 +7,10 @@
 
 import Foundation
 import Combine
-import MusicKit
 import SwiftUI
+#if !APPCLIP
+import MusicKit
+#endif
 
 @MainActor
 class SessionCoordinator: ObservableObject {
@@ -25,6 +27,8 @@ class SessionCoordinator: ObservableObject {
     @Published var displayedVoteCounts: [UUID: Int] = [:]  // queuedSongId -> displayed vote count (set from session data OR optimistic updates)
     @Published var pendingSongs: [QueuedSongResponse] = []  // Songs being added
     @Published var optimisticSkip: Bool = false  // Track being skipped
+    /// Set by URL/deep link handling; consumed by JoinSessionView or App Clip root view
+    @Published var pendingJoinCode: String?
     
     private var votesInFlight: Set<UUID> = []  // Songs currently being voted on - don't overwrite from server
     private var pendingVoteValues: [UUID: Int] = [:]  // Queued vote values to send after current in-flight completes
@@ -162,9 +166,11 @@ class SessionCoordinator: ObservableObject {
         do {
             try await apiService.leaveSession()
             disconnectRealtime()
+            #if !APPCLIP
             if isHost {
                 MusicManager.shared.stop()
             }
+            #endif
             // Reset all optimistic state
             currentSession = nil
             userVotes = [:]
@@ -180,21 +186,20 @@ class SessionCoordinator: ObservableObject {
     }
     
     // MARK: - Realtime Management
-    
+
     private func connectRealtime() {
         guard let sessionId = currentSession?.session.id else { return }
-        
-        // Initialize Realtime service if needed
+
         if realtimeService == nil {
             realtimeService = RealtimeService(authService: apiService.authService)
             realtimeService?.setSessionCoordinator(self)
         }
-        
+
         Task {
             await realtimeService?.subscribe(to: sessionId)
         }
     }
-    
+
     private func disconnectRealtime() {
         Task {
             await realtimeService?.unsubscribe()
@@ -353,7 +358,8 @@ class SessionCoordinator: ObservableObject {
     }
     
     // MARK: - Music Playback Handling
-    
+
+    #if !APPCLIP
     private func handleSessionChange(oldValue: CurrentSessionResponse?, newValue: CurrentSessionResponse?) {
         // Only host should play music
         guard isHost else { return }
@@ -437,6 +443,10 @@ class SessionCoordinator: ObservableObject {
             }
         }
     }
+    #else
+    // App Clip: no-op stub required because currentSession didSet references this method
+    private func handleSessionChange(oldValue: CurrentSessionResponse?, newValue: CurrentSessionResponse?) {}
+    #endif
 }
 
 

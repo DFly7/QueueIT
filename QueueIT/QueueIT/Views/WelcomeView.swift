@@ -146,6 +146,15 @@ struct WelcomeView: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 appeared = true
             }
+            // Handle deep link / QR scan that arrived before this view appeared
+            if sessionCoordinator.pendingJoinCode != nil {
+                showingJoinSession = true
+            }
+        }
+        .onChange(of: sessionCoordinator.pendingJoinCode) { _, code in
+            if code != nil {
+                showingJoinSession = true
+            }
         }
     }
 }

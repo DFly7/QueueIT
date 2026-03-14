@@ -248,9 +248,11 @@ struct TrackResultRow: View {
     }
 }
 
+#if !APPCLIP
 #Preview {
     UnifiedSearchView(
         provider: AppleMusicTrackSearchProvider()
     )
     .environmentObject(SessionCoordinator.mock())
 }
+#endif

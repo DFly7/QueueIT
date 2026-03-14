@@ -15,7 +15,8 @@ struct User: Identifiable, Codable, Hashable {
     let avatarUrl: String?
     let musicProvider: String? // 'apple', 'spotify', or 'none'
     let storefront: String? // Apple Music storefront (e.g., 'us', 'gb', 'ca')
-    
+    let isAnonymous: Bool // true for App Clip guests who signed in anonymously
+
     // Map snake_case from SQL to camelCase in Swift
     enum CodingKeys: String, CodingKey {
         case id
@@ -24,16 +25,18 @@ struct User: Identifiable, Codable, Hashable {
         case avatarUrl = "avatar_url"
         case musicProvider = "music_provider"
         case storefront
+        case isAnonymous = "is_anonymous"
     }
-    
-    // Convenience initializer for optimistic UI
+
+    // Convenience initializer for optimistic UI / previews
     init(
         id: UUID,
         username: String?,
         email: String? = nil,
         avatarUrl: String? = nil,
         musicProvider: String? = "none",
-        storefront: String? = "us"
+        storefront: String? = "us",
+        isAnonymous: Bool = false
     ) {
         self.id = id
         self.email = email
@@ -41,6 +44,7 @@ struct User: Identifiable, Codable, Hashable {
         self.avatarUrl = avatarUrl
         self.musicProvider = musicProvider
         self.storefront = storefront
+        self.isAnonymous = isAnonymous
     }
 }
 

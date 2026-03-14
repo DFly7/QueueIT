@@ -5,6 +5,7 @@
 //  Supabase Realtime subscription service for multi-user vote and queue sync
 //
 
+import Combine
 import Foundation
 import Supabase
 import Realtime

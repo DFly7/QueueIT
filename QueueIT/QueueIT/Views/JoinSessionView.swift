@@ -132,6 +132,12 @@ struct JoinSessionView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 appeared = true
             }
+            // Auto-fill and join if launched from a QR/link deep link
+            if let code = sessionCoordinator.pendingJoinCode {
+                joinCode = code
+                sessionCoordinator.pendingJoinCode = nil
+                joinSession()
+            }
         }
         .onChange(of: sessionCoordinator.isInSession) { _, isInSession in
             if isInSession {
