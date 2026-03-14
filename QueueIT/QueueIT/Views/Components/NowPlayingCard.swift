@@ -13,6 +13,7 @@ struct NowPlayingCard: View {
     
     @State private var voteAnimation: Bool = false
     @State private var appeared = false
+    @State private var skipAnimation: Bool = false
     
     private var userVote: Int {
         sessionCoordinator.getUserVote(for: queuedSong.id)
@@ -21,6 +22,22 @@ struct NowPlayingCard: View {
     // Get optimistic vote count from coordinator
     private var displayedVotes: Int {
         sessionCoordinator.getDisplayedVoteCount(for: queuedSong.id)
+    }
+
+    private var skipRequestCount: Int {
+        sessionCoordinator.currentSession?.skipRequestCount ?? 0
+    }
+
+    private var participantCount: Int {
+        max(sessionCoordinator.currentSession?.participantCount ?? 1, 1)
+    }
+
+    private var userRequestedSkip: Bool {
+        sessionCoordinator.currentSession?.userRequestedSkip ?? false
+    }
+
+    private var skipFraction: Double {
+        Double(skipRequestCount) / Double(participantCount)
     }
     
     var body: some View {
@@ -138,6 +155,9 @@ struct NowPlayingCard: View {
             }
             .padding(.top, 8)
             
+            // Crowdsourced skip section
+            skipSection
+
             // Added by section with guest badge
             HStack(spacing: 6) {
                 Image(systemName: queuedSong.addedBy.isAnonymous ? "person.fill.questionmark" : "person.fill")
@@ -172,6 +192,86 @@ struct NowPlayingCard: View {
         }
     }
     
+    @ViewBuilder
+    private var skipSection: some View {
+        VStack(spacing: 8) {
+            // Skip request button
+            Button(action: requestSkip) {
+                HStack(spacing: 8) {
+                    Image(systemName: userRequestedSkip ? "checkmark.circle.fill" : "forward.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(userRequestedSkip ? "Skip Requested" : "Request to Skip")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .foregroundColor(userRequestedSkip ? AppTheme.neonCyan : .white.opacity(0.75))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(
+                    userRequestedSkip
+                        ? AppTheme.neonCyan.opacity(0.15)
+                        : Color.white.opacity(0.08)
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            userRequestedSkip
+                                ? AppTheme.neonCyan.opacity(0.6)
+                                : Color.white.opacity(0.12),
+                            lineWidth: 1
+                        )
+                )
+                .clipShape(Capsule())
+                .scaleEffect(skipAnimation ? 0.95 : 1.0)
+            }
+            .buttonStyle(.plain)
+            .animation(AppTheme.bouncyAnimation, value: userRequestedSkip)
+            .disabled(userRequestedSkip)
+
+            // Skip progress bar + count label
+            VStack(spacing: 4) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.08))
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    colors: skipFraction > 0.5
+                                        ? [AppTheme.coral, AppTheme.coral.opacity(0.7)]
+                                        : [AppTheme.neonCyan.opacity(0.6), AppTheme.neonCyan.opacity(0.3)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .frame(width: geo.size.width * min(skipFraction, 1.0))
+                            .animation(.spring(response: 0.4, dampingFraction: 0.75), value: skipFraction)
+                    }
+                }
+                .frame(height: 4)
+
+                HStack {
+                    Text("\(skipRequestCount)/\(participantCount) players have requested to skip")
+                        .font(AppTheme.caption())
+                        .foregroundColor(.white.opacity(0.45))
+                    Spacer()
+                    Text("Over 50% skips")
+                        .font(AppTheme.caption())
+                        .foregroundColor(.white.opacity(0.3))
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func requestSkip() {
+        withAnimation(AppTheme.bouncyAnimation) { skipAnimation = true }
+        Task {
+            await sessionCoordinator.requestSkip()
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            withAnimation { skipAnimation = false }
+        }
+    }
+
     private var placeholderImage: some View {
         ZStack {
             Color.white.opacity(0.08)

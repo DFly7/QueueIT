@@ -86,12 +86,27 @@ struct CurrentSessionResponse: Codable {
     /// The requesting user's votes in this session: queued_song_id → vote_value (1 or -1).
     /// Empty dict when the user has no votes. Decoded from `my_votes` in the API response.
     var myVotes: [UUID: Int]
+    // Crowdsourced skip fields
+    var skipRequestCount: Int
+    var participantCount: Int
+    var userRequestedSkip: Bool
 
-    init(session: SessionBase, currentSong: QueuedSongResponse?, queue: [QueuedSongResponse], myVotes: [UUID: Int] = [:]) {
+    init(
+        session: SessionBase,
+        currentSong: QueuedSongResponse?,
+        queue: [QueuedSongResponse],
+        myVotes: [UUID: Int] = [:],
+        skipRequestCount: Int = 0,
+        participantCount: Int = 1,
+        userRequestedSkip: Bool = false
+    ) {
         self.session = session
         self.currentSong = currentSong
         self.queue = queue
         self.myVotes = myVotes
+        self.skipRequestCount = skipRequestCount
+        self.participantCount = participantCount
+        self.userRequestedSkip = userRequestedSkip
     }
     
     func withUpdatedVotes(for songId: UUID, votes: Int) -> CurrentSessionResponse {
@@ -118,6 +133,9 @@ struct CurrentSessionResponse: Codable {
         case currentSong = "current_song"
         case queue
         case myVotes = "my_votes"
+        case skipRequestCount = "skip_request_count"
+        case participantCount = "participant_count"
+        case userRequestedSkip = "user_requested_skip"
     }
 
     init(from decoder: Decoder) throws {
@@ -131,6 +149,25 @@ struct CurrentSessionResponse: Codable {
             guard let uuid = UUID(uuidString: key) else { return nil }
             return (uuid, value)
         })
+        skipRequestCount = try container.decodeIfPresent(Int.self, forKey: .skipRequestCount) ?? 0
+        participantCount = try container.decodeIfPresent(Int.self, forKey: .participantCount) ?? 1
+        userRequestedSkip = try container.decodeIfPresent(Bool.self, forKey: .userRequestedSkip) ?? false
+    }
+}
+
+// MARK: - Skip Response
+
+struct SkipResponse: Codable {
+    let ok: Bool
+    let skipRequestCount: Int
+    let participantCount: Int
+    let skipped: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case skipRequestCount = "skip_request_count"
+        case participantCount = "participant_count"
+        case skipped
     }
 }
 

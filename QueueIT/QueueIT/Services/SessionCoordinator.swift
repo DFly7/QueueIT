@@ -428,6 +428,34 @@ class SessionCoordinator: ObservableObject {
         }
     }
     
+    // MARK: - Crowdsourced Skip
+
+    func requestSkip() async {
+        do {
+            let response = try await apiService.requestSkip()
+
+            // Always apply the updated counts so the UI reflects the tap immediately.
+            // When the threshold was met the backend returns skip_request_count == 0
+            // (already cleared), so we show participantCount/participantCount briefly
+            // before refreshing to give the user visible feedback that the vote landed.
+            if var session = currentSession {
+                let displayCount = response.skipped ? response.participantCount : response.skipRequestCount
+                session.skipRequestCount = displayCount
+                session.participantCount = response.participantCount
+                session.userRequestedSkip = true
+                currentSession = session
+            }
+
+            if response.skipped {
+                // Short pause so the full bar is visible before the song changes
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                await refreshSession()
+            }
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     // MARK: - Host Controls
     
     func skipCurrentTrack() async {

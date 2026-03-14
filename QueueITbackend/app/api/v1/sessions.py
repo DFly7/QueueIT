@@ -18,6 +18,7 @@ from app.schemas.session import (
     CurrentSessionResponse,
     SessionCreateRequest,
     SessionControlRequest,
+    SkipRequestResponse,
 )
 from app.services.session_service import (
     create_session_for_user,
@@ -25,6 +26,7 @@ from app.services.session_service import (
     get_current_session_for_user,
     leave_current_session_for_user,
     control_session_for_user,
+    request_skip_for_user,
 )
 router = APIRouter()
 
@@ -76,6 +78,18 @@ def control_session(
     request: SessionControlRequest = Body(...),
 ):
     return control_session_for_user(auth, request)
+
+@router.post("/request_skip", response_model=SkipRequestResponse)
+def request_skip(
+    auth: AuthenticatedClient = Depends(get_authenticated_client),
+):
+    """
+    Any session participant can call this to request skipping the current song.
+    When more than 50% of participants request a skip, the song is automatically
+    advanced and all requests are cleared.
+    """
+    return request_skip_for_user(auth)
+
 
 @router.post("/song_finished")
 def mark_song_finished(

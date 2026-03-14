@@ -118,3 +118,15 @@ class CurrentSessionResponse(BaseModel):
     # Always a dict — never None — so the iOS client can safely iterate without
     # Optional unwrapping. Empty dict means the user has no votes in this session.
     my_votes: Dict[str, int] = {}
+    # Crowdsourced skip fields
+    skip_request_count: int = 0
+    participant_count: int = 1
+    user_requested_skip: bool = False
+
+
+class SkipRequestResponse(BaseModel):
+    """Response for POST /sessions/request_skip"""
+    ok: bool
+    skip_request_count: int
+    participant_count: int
+    skipped: bool

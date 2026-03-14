@@ -18,6 +18,10 @@ class RealtimeService: ObservableObject {
     private var subscriptions: Set<RealtimeSubscription> = []
     private let authService: AuthService
     private weak var sessionCoordinator: SessionCoordinator?
+    /// Debounce task: cancels any pending refresh when a new event arrives so
+    /// bursts of simultaneous realtime events (e.g. bulk DELETE on skip_requests)
+    /// coalesce into a single refreshSession() call on the main actor.
+    private var pendingRefreshTask: Task<Void, Never>?
     
     init(authService: AuthService) {
         self.authService = authService
@@ -73,10 +77,7 @@ class RealtimeService: ObservableObject {
             schema: "public",
             table: "votes"
         ) { [weak self] _ in
-            Task { @MainActor in
-                print("📬 RealtimeService: Votes changed")
-                await self?.handleChange()
-            }
+            self?.handleChange(source: "votes")
         }
         .store(in: &subscriptions)
         
@@ -87,10 +88,7 @@ class RealtimeService: ObservableObject {
             table: "queued_songs",
             filter: "session_id=eq.\(sessionId.uuidString)"
         ) { [weak self] _ in
-            Task { @MainActor in
-                print("📬 RealtimeService: Queue changed")
-                await self?.handleChange()
-            }
+            self?.handleChange(source: "queued_songs")
         }
         .store(in: &subscriptions)
         
@@ -101,13 +99,23 @@ class RealtimeService: ObservableObject {
             table: "sessions",
             filter: "id=eq.\(sessionId.uuidString)"
         ) { [weak self] _ in
-            Task { @MainActor in
-                print("📬 RealtimeService: Session changed")
-                await self?.handleChange()
-            }
+            self?.handleChange(source: "sessions")
         }
         .store(in: &subscriptions)
-        
+
+        // Listen to skip_requests changes so all participants see live skip counts.
+        // Requires skip_requests to be in the supabase_realtime publication
+        // (see migration 20260317_skip_requests_realtime.sql).
+        channel.onPostgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "skip_requests",
+            filter: "session_id=eq.\(sessionId.uuidString)"
+        ) { [weak self] _ in
+            self?.handleChange(source: "skip_requests")
+        }
+        .store(in: &subscriptions)
+
         // Subscribe to the channel
         do {
             try await channel.subscribeWithError()
@@ -120,6 +128,8 @@ class RealtimeService: ObservableObject {
     func unsubscribe() async {
         print("🔴 RealtimeService: Unsubscribing...")
         
+        pendingRefreshTask?.cancel()
+        pendingRefreshTask = nil
         subscriptions.removeAll()
         
         if let channel = channel {
@@ -132,17 +142,30 @@ class RealtimeService: ObservableObject {
     }
     
     // MARK: - Change Handler
-    
-    private func handleChange() async {
-        // When any tracked table changes, refresh the session
-        // The optimistic UI handles the user's own actions,
-        // this syncs changes from other users
-        
-        guard let coordinator = sessionCoordinator else { return }
-        
-        // Small delay to allow database to settle
-        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
-        
-        await coordinator.refreshSession()
+
+    /// Entry point called from nonisolated Postgres-change closures.
+    /// Uses `await` to cross into the main actor — the Swift 6-safe way to
+    /// call an `@MainActor` method from a nonisolated context.
+    nonisolated private func handleChange(source: String) {
+        Task { [weak self] in
+            await self?.scheduleRefresh(source: source)
+        }
+    }
+
+    /// Cancels any pending refresh and schedules a new one after a short debounce
+    /// window. Rapid bursts of events (e.g. bulk DELETE on skip_requests) coalesce
+    /// into a single refreshSession() call.
+    /// Captures `coordinator` directly so no `self` reference leaks into the Task.
+    @MainActor
+    private func scheduleRefresh(source: String) {
+        pendingRefreshTask?.cancel()
+        let coordinator = sessionCoordinator
+        pendingRefreshTask = Task {
+            guard let coordinator else { return }
+            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms debounce
+            guard !Task.isCancelled else { return }
+            print("🔄 RealtimeService: refreshing session (triggered by \(source))")
+            await coordinator.refreshSession()
+        }
     }
 }

@@ -5,7 +5,7 @@ from fastapi import HTTPException
 import structlog
 
 from app.core.auth import AuthenticatedClient
-from app.repositories import SessionRepository, UserRepository, QueueRepository, SongRepository
+from app.repositories import SessionRepository, UserRepository, QueueRepository, SongRepository, SkipRequestRepository
 from app.schemas.session import (
     SessionCreateRequest,
     SessionJoinRequest,
@@ -13,6 +13,7 @@ from app.schemas.session import (
     SessionBase,
     CurrentSessionResponse,
     QueuedSongResponse,
+    SkipRequestResponse,
 )
 from app.schemas.user import User
 from app.schemas.track import TrackOut
@@ -71,6 +72,7 @@ def get_current_session_for_user(auth: AuthenticatedClient) -> CurrentSessionRes
     session_repo = SessionRepository(client)
     user_repo = UserRepository(client)
     queue_repo = QueueRepository(client)
+    skip_repo = SkipRequestRepository(client)
 
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
@@ -99,11 +101,20 @@ def get_current_session_for_user(auth: AuthenticatedClient) -> CurrentSessionRes
         session_id=session_row["id"], user_id=user_id
     )
 
+    skip_request_count = skip_repo.get_skip_request_count(session_row["id"])
+    participant_count = skip_repo.get_participant_count(session_row["id"])
+    user_requested_skip = skip_repo.user_has_requested_skip(
+        session_id=session_row["id"], user_id=user_id
+    )
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(session_row, host_row),
         current_song=current_song_model,
         queue=queue_models,
         my_votes=my_votes,
+        skip_request_count=skip_request_count,
+        participant_count=participant_count,
+        user_requested_skip=user_requested_skip,
     )
 
 
@@ -148,11 +159,17 @@ def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateReq
     if not host_row:
         raise HTTPException(status_code=404, detail="Host not found")
 
+    skip_repo = SkipRequestRepository(client)
+    participant_count = skip_repo.get_participant_count(created["id"])
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(created, host_row),
         current_song=None,
         queue=[],
         my_votes={},
+        skip_request_count=0,
+        participant_count=participant_count,
+        user_requested_skip=False,
     )
 
 
@@ -193,11 +210,21 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
         session_id=session_row["id"], user_id=user_id
     )
 
+    skip_repo = SkipRequestRepository(client)
+    skip_request_count = skip_repo.get_skip_request_count(session_row["id"])
+    participant_count = skip_repo.get_participant_count(session_row["id"])
+    user_requested_skip = skip_repo.user_has_requested_skip(
+        session_id=session_row["id"], user_id=user_id
+    )
+
     return CurrentSessionResponse(
         session=_map_session_to_schema(session_row, host_row),
         current_song=current_song_model,
         queue=queue_models,
         my_votes=my_votes,
+        skip_request_count=skip_request_count,
+        participant_count=participant_count,
+        user_requested_skip=user_requested_skip,
     )
 
 
@@ -218,6 +245,7 @@ def control_session_for_user(auth: AuthenticatedClient, request: SessionControlR
     user_id = auth.payload["sub"]
     session_repo = SessionRepository(client)
     queue_repo = QueueRepository(client)
+    skip_repo = SkipRequestRepository(client)
 
     session_row = session_repo.get_current_for_user(user_id)
     if not session_row:
@@ -234,8 +262,8 @@ def control_session_for_user(auth: AuthenticatedClient, request: SessionControlR
         if session_details.get("current_song"):
             queue_repo.update_song_status(session_details["current_song"], "skipped")
         
-        # Advance to next song
-        _advance_to_next_song(session_repo, queue_repo, session_row["id"])
+        # Advance to next song (also clears skip requests)
+        _advance_to_next_song(session_repo, queue_repo, session_row["id"], skip_repo)
 
     return {"ok": True}
 
@@ -243,13 +271,19 @@ def control_session_for_user(auth: AuthenticatedClient, request: SessionControlR
 def _advance_to_next_song(
     session_repo: SessionRepository,
     queue_repo: QueueRepository,
-    session_id: str
+    session_id: str,
+    skip_repo: Optional["SkipRequestRepository"] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Helper function to move to the next song in the queue.
     Sets the next queued song as 'playing' and updates session.current_song.
+    Also clears any outstanding skip requests for this session.
     Returns the next song dict if found, None otherwise.
     """
+    # Clear skip requests whenever we advance to the next song
+    if skip_repo is not None:
+        skip_repo.clear_skip_requests(session_id)
+
     # Get the next song in queue
     next_song = queue_repo.get_next_queued_song(session_id)
     
@@ -272,6 +306,56 @@ def _advance_to_next_song(
         return None
 
 
+def request_skip_for_user(auth: AuthenticatedClient) -> SkipRequestResponse:
+    """
+    Any session participant can request to skip the current song.
+    When more than 50% of participants have requested a skip the song is
+    automatically advanced (same flow as host skip) and requests are cleared.
+    """
+    client = auth.client
+    user_id = auth.payload["sub"]
+    session_repo = SessionRepository(client)
+    queue_repo = QueueRepository(client)
+    skip_repo = SkipRequestRepository(client)
+
+    session_row = session_repo.get_current_for_user(user_id)
+    if not session_row:
+        raise HTTPException(status_code=404, detail="No active session")
+
+    session_id = session_row["id"]
+
+    # Upsert the skip request (idempotent – repeated taps are safe)
+    skip_repo.insert_request(session_id=session_id, user_id=user_id)
+
+    skip_request_count = skip_repo.get_skip_request_count(session_id)
+    participant_count = skip_repo.get_participant_count(session_id)
+
+    skipped = False
+    if skip_request_count > participant_count / 2:
+        logger.info(
+            "crowdsourced_skip_threshold_reached",
+            session_id=session_id,
+            skip_request_count=skip_request_count,
+            participant_count=participant_count,
+        )
+        # Mark current song as skipped
+        session_details = session_repo.get_by_id(session_id)
+        if session_details and session_details.get("current_song"):
+            queue_repo.update_song_status(session_details["current_song"], "skipped")
+
+        # Advance and clear skip requests
+        _advance_to_next_song(session_repo, queue_repo, session_id, skip_repo)
+        skip_request_count = 0
+        skipped = True
+
+    return SkipRequestResponse(
+        ok=True,
+        skip_request_count=skip_request_count,
+        participant_count=participant_count,
+        skipped=skipped,
+    )
+
+
 def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
     """
     Called when the current song finishes playing naturally.
@@ -282,6 +366,7 @@ def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
     user_id = auth.payload["sub"]
     session_repo = SessionRepository(client)
     queue_repo = QueueRepository(client)
+    skip_repo = SkipRequestRepository(client)
 
     logger.info("song_finished_called", user_id=user_id)
 
@@ -310,8 +395,8 @@ def song_finished_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
         queue_repo.update_song_status(current_song_id, "played")
         logger.info("song_marked_as_played", queued_song_id=current_song_id)
     
-    # Advance to next song
-    next_song = _advance_to_next_song(session_repo, queue_repo, session_row["id"])
+    # Advance to next song (also clears skip requests)
+    next_song = _advance_to_next_song(session_repo, queue_repo, session_row["id"], skip_repo)
 
     logger.info(
         "song_finished_complete",

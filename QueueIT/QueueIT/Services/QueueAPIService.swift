@@ -230,6 +230,14 @@ class QueueAPIService {
         let _: [String: Bool] = try await performRequest(request, responseType: [String: Bool].self)
     }
     
+    func requestSkip() async throws -> SkipResponse {
+        let request = try await createRequest(
+            path: "/api/v1/sessions/request_skip",
+            method: "POST"
+        )
+        return try await performRequest(request, responseType: SkipResponse.self)
+    }
+    
     // MARK: - Queue & Songs API
     
     func addSong(_ request: AddSongRequest) async throws -> QueuedSongResponse {
