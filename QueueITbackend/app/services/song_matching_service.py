@@ -89,6 +89,7 @@ class SongMatchingService:
         duration_ms = spotify_track.get("duration_ms", 0)
         isrc = spotify_track.get("external_ids", {}).get("isrc")
         spotify_album = spotify_track.get("album", {}).get("name", "")
+        spotify_album_track_count = spotify_track.get("album", {}).get("total_tracks", 0)
         
         apple_service = get_apple_music_service()
         
@@ -98,10 +99,16 @@ class SongMatchingService:
                 "isrc": isrc,
                 "spotify_id": spotify_id,
                 "spotify_album": spotify_album,
+                "spotify_track_count": spotify_album_track_count,
                 "storefront": storefront
             })
             
-            apple_song = await apple_service.search_by_isrc(isrc, storefront, spotify_album)
+            apple_song = await apple_service.search_by_isrc(
+                isrc, 
+                storefront, 
+                spotify_album,
+                spotify_album_track_count
+            )
             if apple_song:
                 apple_id = apple_song["id"]
                 apple_album = apple_song.get("attributes", {}).get("albumName", "")

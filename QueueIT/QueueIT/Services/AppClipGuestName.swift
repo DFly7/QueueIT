@@ -41,6 +41,6 @@ enum AppClipGuestName {
             "Dragon", "Phoenix", "Panther", "Raven", "Jaguar",
             "Sloth", "Koala", "Dolphin", "Penguin", "Badger"
         ]
-        return "\(adjectives.randomElement()!) \(nouns.randomElement()!)"
+        return "\(adjectives.randomElement()!)-\(nouns.randomElement()!)"
     }
 }

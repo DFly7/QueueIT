@@ -41,28 +41,48 @@ struct AppClipGuestQueueView: View {
                 .padding(.bottom, 100)
             }
 
-            // Floating "Add Song" button
+            // Floating search bar
             VStack {
                 Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: { showingSearch = true }) {
-                        ZStack {
-                            Circle()
-                                .fill(AppTheme.primaryGradient)
-                                .frame(width: 60, height: 60)
-                                .shadow(color: AppTheme.neonCyan.opacity(0.4), radius: 16, y: 4)
-                            Image(systemName: "plus")
-                                .font(.system(size: 24, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
+                Button(action: { showingSearch = true }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.7))
+                        
+                        Text("Search for a song...")
+                            .font(AppTheme.body())
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        Spacer()
+                        
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(AppTheme.primaryGradient)
                     }
-                    .scaleEffect(appeared ? 1 : 0.8)
-                    .opacity(appeared ? 1 : 0)
-                    .padding(.trailing, AppTheme.spacing)
-                    .padding(.bottom, AppTheme.spacing)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 28)
+                            .fill(Color.black.opacity(0.4))
+                            .background(
+                                RoundedRectangle(cornerRadius: 28)
+                                    .fill(Color.white.opacity(0.15))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28)
+                                    .stroke(AppTheme.neonCyan.opacity(0.4), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.3), radius: 16, y: 8)
+                    )
                 }
+                .buttonStyle(.plain)
+                .scaleEffect(appeared ? 1 : 0.95)
+                .opacity(appeared ? 1 : 0)
+                .padding(.horizontal, AppTheme.spacing)
+                .padding(.bottom, 8)
             }
+            .ignoresSafeArea(edges: .bottom)
         }
         .sheet(isPresented: $showingSearch) {
             // Always use the Spotify backend proxy in the App Clip (no Apple Music auth)

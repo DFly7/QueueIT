@@ -11,11 +11,44 @@ import httpx
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
+from difflib import SequenceMatcher
 
 from app.core.config import get_settings
 from app.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def _string_similarity(a: str, b: str) -> float:
+    """Calculate string similarity (0.0 to 1.0) using SequenceMatcher"""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
+def _is_compilation_album(album_name: str) -> bool:
+    """Detect if album is likely a compilation/various artists album"""
+    album_lower = album_name.lower()
+    compilation_patterns = [
+        "now that's what i call",
+        "now that's what i call music",
+        "greatest hits",
+        "best of",
+        "the best of",
+        "hits",
+        "collection",
+        "anthology",
+        "various artists",
+        "va -",
+        "compilation",
+        "essentials",
+        "classics",
+        "ultimate",
+        "complete",
+        "top 40",
+        "chart",
+        "hits of",
+        "ministry of sound"
+    ]
+    return any(pattern in album_lower for pattern in compilation_patterns)
 
 
 class AppleMusicService:
@@ -95,15 +128,23 @@ class AppleMusicService:
         self,
         isrc: str,
         storefront: str = "us",
-        preferred_album: Optional[str] = None
+        preferred_album: Optional[str] = None,
+        spotify_track_count: Optional[int] = None
     ) -> Optional[dict]:
         """
-        Search Apple Music catalog by ISRC.
+        Search Apple Music catalog by ISRC with intelligent version selection.
+        
+        When multiple versions exist, uses scoring system:
+        - Exact album match: +100 points
+        - Fuzzy album match (>0.8 similarity): +50 points  
+        - Track count match (single vs album): +30 points
+        - Prefer singles over albums: +20 points if both are singles
         
         Args:
             isrc: International Standard Recording Code
             storefront: Apple Music storefront/region (e.g., 'us', 'gb', 'ca')
             preferred_album: Optional album name to prefer when multiple versions exist
+            spotify_track_count: Number of tracks in Spotify album (for single detection)
             
         Returns:
             Song data dict or None if not found
@@ -131,39 +172,103 @@ class AppleMusicService:
                     logger.debug("No Apple Music match for ISRC", extra={"isrc": isrc})
                     return None
                 
-                # Log when multiple versions exist
-                if len(results) > 1:
-                    logger.info("Multiple Apple Music versions found for ISRC", extra={
+                if len(results) == 1:
+                    # Only one version, return it
+                    song = results[0]
+                    logger.info("Found Apple Music track by ISRC (single version)", extra={
                         "isrc": isrc,
-                        "count": len(results),
-                        "albums": [r.get("attributes", {}).get("albumName") for r in results]
+                        "apple_id": song["id"],
+                        "name": song["attributes"].get("name"),
+                        "album": song["attributes"].get("albumName")
+                    })
+                    return song
+                
+                # Multiple versions exist - use scoring system
+                logger.info("Multiple Apple Music versions found for ISRC", extra={
+                    "isrc": isrc,
+                    "count": len(results),
+                    "albums": [r.get("attributes", {}).get("albumName") for r in results],
+                    "track_counts": [r.get("attributes", {}).get("trackCount") for r in results],
+                    "spotify_album": preferred_album,
+                    "spotify_track_count": spotify_track_count
+                })
+                
+                scored_results = []
+                spotify_is_single = spotify_track_count and spotify_track_count <= 3
+                
+                for result in results:
+                    attrs = result.get("attributes", {})
+                    apple_album = attrs.get("albumName", "")
+                    apple_track_count = attrs.get("trackCount", 0)
+                    apple_is_single = apple_track_count <= 3
+                    apple_is_compilation = _is_compilation_album(apple_album)
+                    
+                    score = 0
+                    match_reasons = []
+                    
+                    # PENALTY: Compilation albums (unless Spotify album is also a compilation)
+                    if apple_is_compilation:
+                        if preferred_album and not _is_compilation_album(preferred_album):
+                            score -= 100  # Heavy penalty for compilations when Spotify showed original
+                            match_reasons.append("compilation_penalty")
+                        else:
+                            match_reasons.append("compilation_match")
+                    else:
+                        # BOOST: Non-compilation albums (prefer originals)
+                        score += 40
+                        match_reasons.append("original_release")
+                    
+                    # Album name matching
+                    if preferred_album:
+                        if apple_album.lower() == preferred_album.lower():
+                            score += 100
+                            match_reasons.append("exact_album")
+                        else:
+                            similarity = _string_similarity(apple_album, preferred_album)
+                            if similarity > 0.8:
+                                score += int(50 * similarity)
+                                match_reasons.append(f"fuzzy_album_{similarity:.2f}")
+                            elif similarity > 0.5:
+                                # Weak match still gets some points
+                                score += int(25 * similarity)
+                                match_reasons.append(f"weak_album_{similarity:.2f}")
+                    
+                    # Track count matching (single vs album)
+                    if spotify_track_count and apple_track_count:
+                        if spotify_is_single == apple_is_single:
+                            score += 30
+                            match_reasons.append("track_count_type_match")
+                    
+                    # Prefer singles when Spotify shows a single
+                    if spotify_is_single and apple_is_single:
+                        score += 20
+                        match_reasons.append("both_singles")
+                    
+                    scored_results.append({
+                        "result": result,
+                        "score": score,
+                        "reasons": match_reasons,
+                        "album": apple_album,
+                        "track_count": apple_track_count,
+                        "is_single": apple_is_single,
+                        "is_compilation": apple_is_compilation
                     })
                 
-                # If preferred album specified, try to match it
-                if preferred_album and len(results) > 1:
-                    preferred_album_lower = preferred_album.lower()
-                    for result in results:
-                        apple_album = result.get("attributes", {}).get("albumName", "")
-                        if apple_album.lower() == preferred_album_lower:
-                            logger.info("Found Apple Music track with matching album", extra={
-                                "isrc": isrc,
-                                "apple_id": result["id"],
-                                "name": result["attributes"].get("name"),
-                                "album": apple_album,
-                                "preferred": True
-                            })
-                            return result
+                # Sort by score descending
+                scored_results.sort(key=lambda x: x["score"], reverse=True)
                 
-                # Default: Take first match
-                song = results[0]
-                logger.info("Found Apple Music track by ISRC", extra={
+                best_match = scored_results[0]
+                logger.info("Selected best Apple Music match", extra={
                     "isrc": isrc,
-                    "apple_id": song["id"],
-                    "name": song["attributes"].get("name"),
-                    "album": song["attributes"].get("albumName"),
-                    "preferred": False
+                    "apple_id": best_match["result"]["id"],
+                    "name": best_match["result"]["attributes"].get("name"),
+                    "album": best_match["album"],
+                    "score": best_match["score"],
+                    "reasons": best_match["reasons"],
+                    "all_scores": [(s["album"], s["score"], s["reasons"]) for s in scored_results[:3]]
                 })
-                return song
+                
+                return best_match["result"]
                     
             except httpx.HTTPStatusError as e:
                 logger.error("Apple Music API error", extra={

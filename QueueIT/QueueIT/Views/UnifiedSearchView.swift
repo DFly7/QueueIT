@@ -18,6 +18,7 @@ struct UnifiedSearchView: View {
     @State private var addingTrackIds: Set<String> = []
     @State private var addedTrackIds: Set<String> = []
     @State private var errorMessage: String?
+    @FocusState private var isSearchFocused: Bool
 
     init(provider: any TrackSearchProvider) {
         self.provider = provider
@@ -69,6 +70,9 @@ struct UnifiedSearchView: View {
                     .foregroundColor(AppTheme.accent)
                 }
             }
+            .onAppear {
+                isSearchFocused = true
+            }
         }
     }
 
@@ -83,6 +87,7 @@ struct UnifiedSearchView: View {
                 .foregroundColor(.white)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .focused($isSearchFocused)
 
             if !searchVM.query.isEmpty {
                 Button(action: { searchVM.clearQuery() }) {
