@@ -1,0 +1,7 @@
+services:
+  backend:
+    build: .
+    env_file:
+      - .env  # This pulls your local secrets into the container automatically
+    ports:
+      - "8000:8000"
