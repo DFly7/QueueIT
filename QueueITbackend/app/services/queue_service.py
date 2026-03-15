@@ -157,15 +157,15 @@ async def add_song_to_queue_for_user(auth: AuthenticatedClient, request: AddSong
         song_external_id=resolved_song_id,
     )
 
-    # Auto-play if no song is currently playing
-    # Use atomic conditional update to prevent race conditions with concurrent adds
-    was_set = session_repo.set_current_song_if_empty(
+    # Auto-play if no song is currently playing.
+    # Uses a SECURITY DEFINER RPC so guests (who cannot UPDATE sessions/queued_songs
+    # via RLS) can still trigger auto-play when they add the very first song.
+    # The RPC atomically sets current_song and marks the song 'playing' in one
+    # transaction, preventing race conditions when concurrent adds arrive.
+    session_repo.autoplay_first_song(
         session_id=session_row["id"],
-        queued_song_id=queued["id"]
+        queued_song_id=queued["id"],
     )
-    if was_set:
-        # Only update status to "playing" if we successfully set this as current song
-        queue_repo.update_song_status(queued["id"], "playing")
 
     # Build enriched response using list_session_queue to reuse joins
     queue_items = queue_repo.list_session_queue(session_row["id"])

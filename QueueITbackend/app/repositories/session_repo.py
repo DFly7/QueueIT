@@ -86,21 +86,26 @@ class SessionRepository:
             raise ValueError("Failed to update current song for session")
         return response.data[0]
 
-    def set_current_song_if_empty(self, *, session_id: str, queued_song_id: str) -> bool:
+    def autoplay_first_song(self, *, session_id: str, queued_song_id: str) -> bool:
         """
-        Atomically sets current_song only if it's currently NULL.
-        Returns True if the update was applied, False if current_song was already set.
-        This prevents race conditions when multiple songs are added concurrently.
+        Atomically promotes queued_song_id to 'playing' and sets it as
+        sessions.current_song, but only if current_song is currently NULL.
+
+        Runs via a SECURITY DEFINER RPC so that guests (who lack UPDATE
+        permission on sessions/queued_songs via RLS) can still trigger
+        auto-play when they add the very first song.
+
+        Returns True if the song was promoted, False if current_song was
+        already set (i.e. another add beat us to it).
         """
         response = (
             self.client
-            .from_("sessions")
-            .update({"current_song": queued_song_id}, returning="representation")
-            .eq("id", session_id)
-            .is_("current_song", "null")
+            .rpc("autoplay_first_song", {
+                "p_session_id": session_id,
+                "p_queued_song_id": queued_song_id,
+            })
             .execute()
         )
-        # If response.data is empty, it means the WHERE clause didn't match (current_song wasn't null)
         return bool(response.data)
 
     # --- Helpers ---

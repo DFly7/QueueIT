@@ -5,6 +5,7 @@
 **Problem:** When users add Spotify songs to a session with an Apple Music host, the backend resolves tracks to Apple Music and fetches metadata. Rapid or concurrent adds trigger `429 Too Many Requests` from the Apple Music API, causing "Failed to fetch Apple Music track data" errors.
 
 **Error example:**
+
 ```
 Client error '429 Too Many Requests' for url 'https://api.music.apple.com/v1/catalog/gb/songs/{apple_id}'
 ```
@@ -16,3 +17,6 @@ Client error '429 Too Many Requests' for url 'https://api.music.apple.com/v1/cat
 - Log retry attempts
 
 **Future improvement:** Cache Apple Music track data by `apple_id` in the database or Redis so repeated adds of the same song skip the API call.
+
+Next we Get our appstore meta data set up, we need clip banner set up, and app icons and app store meta data.
+Then test flight, then app store.
