@@ -15,7 +15,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 ### Invite / App Clip
 
 - [x] Fix InviteView share link: updated to `https://queueitapp.com/join?code=<join_code>` (Universal Link)
-- [ ] Verify QR codes and share links open the App Clip correctly
+- [x] Verify QR codes and share links open the App Clip correctly
 
 ### Security
 
@@ -28,10 +28,10 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### URL Scheme & Deep Links
 
-- [ ] Fix URL scheme mismatch: either add `queueit` as second scheme, or update `parseJoinCode` to accept `com.queueit.app`
+- [x] Fix URL scheme mismatch: either add `queueit` as second scheme, or update `parseJoinCode` to accept `com.queueit.app`
 - [x] Fix Info.plist malformed `CFBundleURLSchemes` string (remove line break inside `<string>`)
-- [ ] Test magic link authentication flow end-to-end
-- [ ] Test custom scheme join links (`queueit://join?code=X` or `com.queueit.app://join?code=X`)
+- [x] Test magic link authentication flow end-to-end
+- [x] Test custom scheme join links (`queueit://join?code=X` or `com.queueit.app://join?code=X`)
 
 ---
 
@@ -55,7 +55,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 - [x] Add Associated Domains capability: `applinks:queueitapp.com` (main app), `appclips:queueitapp.com` (App Clip)
 - [x] Host `apple-app-site-association` file on your domain (GitHub Pages at `pages/`)
-- [ ] Test Universal Link flow (`https://queueitapp.com/join?code=X`)
+- [x] Test Universal Link flow (`https://queueitapp.com/join?code=X`)
 
 ### Force Unwraps & Crash Risks
 
@@ -133,9 +133,9 @@ Before submitting to TestFlight:
 - [ ] Backend deployed to stable HTTPS URL
 - [ ] Both app targets point to production backend
 - [x] No secrets in source code (keys in xcconfig, gitignored)
-- [ ] Invite share links open App Clip correctly
+- [x] Invite share links open App Clip correctly
 - [ ] Magic link and OAuth auth flows work
-- [ ] Join-by-link (scheme + Universal Link) works
+- [x] Join-by-link (scheme + Universal Link) works
 - [ ] Privacy policy URL live
 - [ ] Support URL configured
 - [ ] App icons complete
