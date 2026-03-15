@@ -147,7 +147,7 @@ struct AuthView: View {
                         
                         SignInWithAppleButton(
                             onRequest: { request in
-                                let nonce = randomNonceString()
+                                guard let nonce = randomNonceString() else { return }
                                 currentNonce = nonce
                                 request.requestedScopes = [.fullName, .email]
                                 request.nonce = sha256(nonce)
@@ -209,11 +209,14 @@ struct AuthView: View {
         }
     }
     
-    private func randomNonceString(length: Int = 32) -> String {
+    private func randomNonceString(length: Int = 32) -> String? {
         precondition(length > 0)
         var randomBytes = [UInt8](repeating: 0, count: length)
         let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
-        if errorCode != errSecSuccess { fatalError("Unable to generate nonce") }
+        guard errorCode == errSecSuccess else {
+            print("⚠️ SecRandomCopyBytes failed with error: \(errorCode)")
+            return nil
+        }
         return Data(randomBytes).map { String(format: "%02x", $0) }.joined()
     }
 

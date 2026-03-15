@@ -61,9 +61,9 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 - [x] Backend URL: use APIConfig (fail-fast on invalid config; satisfies force-unwrap concern)
 - [x] Replace `randomElement()!` in `AppClipGuestName.swift` with safe fallback
-- [ ] Replace `URLComponents(...)!` in `QueueAPIService.swift` with safe unwrapping
-- [ ] Audit remaining `!` and `fatalError` across codebase
-- [ ] Add proper error handling for edge cases
+- [x] Replace `URLComponents(...)!` in `QueueAPIService.swift` with safe unwrapping
+- [x] Audit remaining `!` and `fatalError` across codebase
+- [x] Add proper error handling for edge cases
 
 ---
 

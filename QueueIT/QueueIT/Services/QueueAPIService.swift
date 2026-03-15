@@ -30,7 +30,9 @@ class QueueAPIService {
         
         // 1. Construct URL with Query Parameters
         let fullURL = baseURL.appendingPathComponent(path)
-        var components = URLComponents(url: fullURL, resolvingAgainstBaseURL: true)!
+        guard var components = URLComponents(url: fullURL, resolvingAgainstBaseURL: true) else {
+            throw APIError.invalidURL
+        }
         
         if let queryItems = queryItems {
             components.queryItems = queryItems
