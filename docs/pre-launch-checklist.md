@@ -9,7 +9,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 ### Backend URL
 - [ ] Deploy backend to a stable production URL (Fly.io, Render, Railway, etc.)
 - [ ] Set production backend URL in `Config-Release.xcconfig`
-- [ ] Both main app and App Clip read from APIConfig (xcconfig → Info.plist)
+- [x] Both main app and App Clip read from APIConfig (xcconfig → Info.plist)
 
 ### Invite / App Clip
 - [ ] Fix InviteView share link: change `com.yourcompany.queueit.Clip` to `DF.QueueIT12.Clip` (or actual App Clip bundle ID)
@@ -17,15 +17,15 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### Security
 - [ ] Rotate Supabase anon key in Supabase dashboard (current key is in git history)
-- [ ] Create `Config-Debug.xcconfig` and `Config-Release.xcconfig` (do not add to Git)
-- [ ] Add `BackendURL`, `SupabaseURL`, `SupabaseAnonKey` to Info.plist as `$(VAR_NAME)` references
+- [x] Create `Config-Debug.xcconfig` and `Config-Release.xcconfig` (do not add to Git)
+- [x] Add `BackendURL`, `SupabaseURL`, `SupabaseAnonKey` to Info.plist as `$(VAR_NAME)` references
 - [ ] **Assign configurations in Xcode**: Project → Info → Configurations: Debug → Config-Debug, Release → Config-Release for each target
-- [ ] Add `*.xcconfig` to `.gitignore` (keep `Config.example.xcconfig` as template)
-- [ ] Main app and App Clip read from APIConfig (Info.plist)
+- [x] Add `*.xcconfig` to `.gitignore` (keep `Config.example.xcconfig` as template)
+- [x] Main app and App Clip read from APIConfig (Info.plist)
 
 ### URL Scheme & Deep Links
 - [ ] Fix URL scheme mismatch: either add `queueit` as second scheme, or update `parseJoinCode` to accept `com.queueit.app`
-- [ ] Fix Info.plist malformed `CFBundleURLSchemes` string (remove line break inside `<string>`)
+- [x] Fix Info.plist malformed `CFBundleURLSchemes` string (remove line break inside `<string>`)
 - [ ] Test magic link authentication flow end-to-end
 - [ ] Test custom scheme join links (`queueit://join?code=X` or `com.queueit.app://join?code=X`)
 
@@ -40,9 +40,9 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Log retry attempts
 
 ### Configuration
-- [ ] APIConfig reads from `Bundle.main.infoDictionary` (BackendURL, SupabaseURL, SupabaseAnonKey)
-- [ ] Build configuration (Debug/Release) selects Config-Debug or Config-Release
-- [ ] Both main app and App Clip use same config source
+- [x] APIConfig reads from `Bundle.main.infoDictionary` (BackendURL, SupabaseURL, SupabaseAnonKey)
+- [x] Build configuration (Debug/Release) selects Config-Debug or Config-Release (assign in Xcode)
+- [x] Both main app and App Clip use same config source
 - [ ] Update all preview mocks to use mock services instead of localhost
 
 ### Universal Links
@@ -51,7 +51,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Test Universal Link flow (`https://queueit.app/join?code=X`)
 
 ### Force Unwraps & Crash Risks
-- [ ] Backend URL: use APIConfig (fail-fast on invalid config; satisfies force-unwrap concern)
+- [x] Backend URL: use APIConfig (fail-fast on invalid config; satisfies force-unwrap concern)
 - [ ] Replace `randomElement()!` in `AppClipGuestName.swift` with safe fallback
 - [ ] Replace `URLComponents(...)!` in `QueueAPIService.swift` with safe unwrapping
 - [ ] Audit remaining `!` and `fatalError` across codebase
@@ -71,8 +71,8 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Select app category (Music or Social Networking)
 
 ### Token Storage
-- [ ] AuthService uses `KeychainLocalStorage()` (Supabase SDK; encrypted at rest)
-- [ ] Never use UserDefaults for JWTs (plain-text; use Keychain)
+- [x] AuthService uses `KeychainLocalStorage()` (Supabase SDK; encrypted at rest)
+- [x] Never use UserDefaults for JWTs (plain-text; use Keychain)
 - [ ] Test token persistence after app restart
 
 ### App Icons
@@ -116,7 +116,7 @@ Before submitting to TestFlight:
 
 - [ ] Backend deployed to stable HTTPS URL
 - [ ] Both app targets point to production backend
-- [ ] No secrets in source code
+- [x] No secrets in source code (keys in xcconfig, gitignored)
 - [ ] Invite share links open App Clip correctly
 - [ ] Magic link and OAuth auth flows work
 - [ ] Join-by-link (scheme + Universal Link) works
