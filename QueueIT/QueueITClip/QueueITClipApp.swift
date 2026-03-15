@@ -20,21 +20,18 @@ import SwiftUI
 
 @main
 struct QueueITClipApp: App {
-    // Same config as main app – update for your environment
-    private let supabaseURLString = "https://wbbcuuvoxgmtlqukbuzv.supabase.co"
-    private let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiYmN1dXZveGdtdGxxdWtidXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzc4MzAsImV4cCI6MjA3NTkxMzgzMH0.7MUe9aUozsiDfKYbd8GuKhks07advqvg_v21cfZdvjc"
-    private let backendURL = URL(string: "https://sallowly-intercommunicable-zonia.ngrok-free.dev")!
+    // Config from APIConfig (Info.plist + .xcconfig)
 
     @StateObject private var authService: AuthService
     @StateObject private var sessionCoordinator: SessionCoordinator
 
     init() {
-        guard let url = URL(string: supabaseURLString) else {
-            fatalError("Invalid Supabase URL")
+        guard let url = URL(string: APIConfig.supabaseURL) else {
+            fatalError("Invalid Supabase URL in config")
         }
-        let service = AuthService(supabaseURL: url, supabaseAnonKey: supabaseAnonKey)
+        let service = AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
         _authService = StateObject(wrappedValue: service)
-        let apiService = QueueAPIService(baseURL: backendURL, authService: service)
+        let apiService = QueueAPIService(baseURL: APIConfig.backendURL, authService: service)
         _sessionCoordinator = StateObject(wrappedValue: SessionCoordinator(apiService: apiService))
     }
 

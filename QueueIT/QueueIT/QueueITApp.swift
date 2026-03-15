@@ -11,16 +11,11 @@ import SwiftData
 @main
 struct QueueITApp: App {
     // MARK: - Services & Coordinators
-    
-    // Configuration - update these for your environment
-    private let supabaseURLString = "https://wbbcuuvoxgmtlqukbuzv.supabase.co"
-    private let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiYmN1dXZveGdtdGxxdWtidXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzMzc4MzAsImV4cCI6MjA3NTkxMzgzMH0.7MUe9aUozsiDfKYbd8GuKhks07advqvg_v21cfZdvjc"
-    // private let backendURL = URL(string: "http://localhost:8000")!
-    private let backendURL = URL(string: "https://sallowly-intercommunicable-zonia.ngrok-free.dev")!
-    
+    // Configuration from APIConfig (reads from Info.plist, populated by .xcconfig at build time)
+
     @StateObject private var authService: AuthService
     @StateObject private var sessionCoordinator: SessionCoordinator
-    
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -35,20 +30,12 @@ struct QueueITApp: App {
     }()
     
     init() {
-        // 1. Prepare the URL
-        guard let url = URL(string: supabaseURLString) else {
-            fatalError("Invalid Supabase URL")
+        guard let url = URL(string: APIConfig.supabaseURL) else {
+            fatalError("Invalid Supabase URL in config")
         }
-        // 2. Initialize AuthService
-        let service = AuthService(supabaseURL: url, supabaseAnonKey: supabaseAnonKey)
-        // 3. Assign to the StateObject
-        // The underscore (_) allows you to access the underlying PropertyWrapper storage
+        let service = AuthService(supabaseURL: url, supabaseAnonKey: APIConfig.supabaseAnonKey)
         _authService = StateObject(wrappedValue: service)
-        
-        // Initialize API service with auth
-        let apiService = QueueAPIService(baseURL: backendURL, authService: service)
-        
-        // Initialize session coordinator
+        let apiService = QueueAPIService(baseURL: APIConfig.backendURL, authService: service)
         let coordinator = SessionCoordinator(apiService: apiService)
         _sessionCoordinator = StateObject(wrappedValue: coordinator)
     }

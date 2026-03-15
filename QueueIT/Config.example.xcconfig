@@ -1,0 +1,7 @@
+// Config.example.xcconfig - Template for developers
+// Copy to Config-Debug.xcconfig and Config-Release.xcconfig, fill in values.
+// Use https:/$()/ to escape double slashes (// is a comment in xcconfig).
+
+BACKEND_URL = https:/$()/localhost:8000
+SUPABASE_URL = https:/$()/yourproject.supabase.co
+SUPABASE_ANON_KEY = your_supabase_anon_key

@@ -10,6 +10,10 @@
 		90923F952ED1CE3D00BE8A55 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 90923F942ED1CE3D00BE8A55 /* Supabase */; };
 		90D2AFEC2F657EC900582247 /* QueueITClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = 90D2AFC82F657EC700582247 /* QueueITClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90D2AFF82F657EC900582247 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 90923F942ED1CE3D00BE8A55 /* Supabase */; };
+		90D2B98B2F670ECC00582247 /* Config-Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 90D2B98A2F670ECC00582247 /* Config-Debug.xcconfig */; };
+		90D2B98C2F670ECC00582247 /* Config-Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 90D2B98A2F670ECC00582247 /* Config-Debug.xcconfig */; };
+		90D2B98E2F670ED800582247 /* Config-Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 90D2B98D2F670ED800582247 /* Config-Release.xcconfig */; };
+		90D2B98F2F670ED800582247 /* Config-Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 90D2B98D2F670ED800582247 /* Config-Release.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,6 +75,8 @@
 		90D2AFC82F657EC700582247 /* QueueITClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QueueITClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2AFD82F657EC900582247 /* QueueITClipTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QueueITClipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2AFE22F657EC900582247 /* QueueITClipUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QueueITClipUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		90D2B98A2F670ECC00582247 /* Config-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Debug.xcconfig"; sourceTree = "<group>"; };
+		90D2B98D2F670ED800582247 /* Config-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Config-Release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -210,6 +216,8 @@
 				90D2AFDB2F657EC900582247 /* QueueITClipTests */,
 				90D2AFE52F657EC900582247 /* QueueITClipUITests */,
 				90CBEDAB2E9BD7DE00CCCC72 /* Products */,
+				90D2B98A2F670ECC00582247 /* Config-Debug.xcconfig */,
+				90D2B98D2F670ED800582247 /* Config-Release.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -436,6 +444,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90D2B98E2F670ED800582247 /* Config-Release.xcconfig in Resources */,
+				90D2B98C2F670ECC00582247 /* Config-Debug.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -457,6 +467,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90D2B98F2F670ED800582247 /* Config-Release.xcconfig in Resources */,
+				90D2B98B2F670ECC00582247 /* Config-Debug.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -552,6 +564,7 @@
 /* Begin XCBuildConfiguration section */
 		90CBEDCB2E9BD7E000CCCC72 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 90D2B98A2F670ECC00582247 /* Config-Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -616,6 +629,7 @@
 		};
 		90CBEDCC2E9BD7E000CCCC72 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 90D2B98D2F670ED800582247 /* Config-Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -985,7 +999,7 @@
 				90CBEDCC2E9BD7E000CCCC72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90CBEDCD2E9BD7E000CCCC72 /* Build configuration list for PBXNativeTarget "QueueIT" */ = {
 			isa = XCConfigurationList;
@@ -994,7 +1008,7 @@
 				90CBEDCF2E9BD7E000CCCC72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90CBEDD02E9BD7E000CCCC72 /* Build configuration list for PBXNativeTarget "QueueITTests" */ = {
 			isa = XCConfigurationList;
@@ -1003,7 +1017,7 @@
 				90CBEDD22E9BD7E000CCCC72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90CBEDD32E9BD7E000CCCC72 /* Build configuration list for PBXNativeTarget "QueueITUITests" */ = {
 			isa = XCConfigurationList;
@@ -1012,7 +1026,7 @@
 				90CBEDD52E9BD7E000CCCC72 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90D2AFED2F657EC900582247 /* Build configuration list for PBXNativeTarget "QueueITClip" */ = {
 			isa = XCConfigurationList;
@@ -1021,7 +1035,7 @@
 				90D2AFEF2F657EC900582247 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90D2AFF22F657EC900582247 /* Build configuration list for PBXNativeTarget "QueueITClipTests" */ = {
 			isa = XCConfigurationList;
@@ -1030,7 +1044,7 @@
 				90D2AFF42F657EC900582247 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		90D2AFF52F657EC900582247 /* Build configuration list for PBXNativeTarget "QueueITClipUITests" */ = {
 			isa = XCConfigurationList;
@@ -1039,7 +1053,7 @@
 				90D2AFF72F657EC900582247 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 

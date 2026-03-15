@@ -1,3 +1,4 @@
+import Auth
 import Combine
 import Foundation
 import SwiftUI
@@ -8,6 +9,7 @@ import Supabase
 // (module-qualified names like QueueIT.User break in QueueITClip).
 typealias AppUser = User
 
+@MainActor
 class AuthService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var currentUser: AppUser? // Points to our custom User struct
@@ -38,8 +40,9 @@ class AuthService: ObservableObject {
             configuration.waitsForConnectivity = true
             
             // 3. Create custom options with this config
+            // Explicitly use KeychainLocalStorage (SDK default) - encrypted at rest, not UserDefaults
             let options = SupabaseClientOptions(
-                auth: .init(),
+                auth: .init(storage: KeychainLocalStorage()),
                 global: .init(
                     session: URLSession(configuration: configuration)
                 )
@@ -282,6 +285,7 @@ class AuthService: ObservableObject {
 
 // MARK: - Preview Mock
 extension AuthService {
+    @MainActor
     static var mock: AuthService {
         let service = AuthService(supabaseURL: URL(string: "https://example.com")!, supabaseAnonKey: "")
         

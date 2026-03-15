@@ -293,3 +293,8 @@ fastlane/screenshots
 QueueITbackend/tests/notebook.ipynb
 
 QueueITbackend/certs
+
+# iOS config with secrets - keep out of source control
+QueueIT/Config-Debug.xcconfig
+QueueIT/Config-Release.xcconfig
+!QueueIT/Config.example.xcconfig

@@ -8,9 +8,8 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### Backend URL
 - [ ] Deploy backend to a stable production URL (Fly.io, Render, Railway, etc.)
-- [ ] Replace ngrok URL in `QueueITApp.swift` with production backend URL
-- [ ] Replace ngrok URL in `QueueITClipApp.swift` with production backend URL
-- [ ] Add environment configuration (dev/staging/prod) so URLs aren't hardcoded
+- [ ] Set production backend URL in `Config-Release.xcconfig`
+- [ ] Both main app and App Clip read from APIConfig (xcconfig → Info.plist)
 
 ### Invite / App Clip
 - [ ] Fix InviteView share link: change `com.yourcompany.queueit.Clip` to `DF.QueueIT12.Clip` (or actual App Clip bundle ID)
@@ -18,11 +17,11 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### Security
 - [ ] Rotate Supabase anon key in Supabase dashboard (current key is in git history)
-- [ ] Move Supabase URL and anon key to `Config.plist` or `.xcconfig`
-- [ ] Add `Config.plist` to `.gitignore`
-- [ ] Create `Config.example.plist` for other developers
-- [ ] Update main app to read keys from config
-- [ ] Update App Clip to read keys from config
+- [ ] Create `Config-Debug.xcconfig` and `Config-Release.xcconfig` (do not add to Git)
+- [ ] Add `BackendURL`, `SupabaseURL`, `SupabaseAnonKey` to Info.plist as `$(VAR_NAME)` references
+- [ ] **Assign configurations in Xcode**: Project → Info → Configurations: Debug → Config-Debug, Release → Config-Release for each target
+- [ ] Add `*.xcconfig` to `.gitignore` (keep `Config.example.xcconfig` as template)
+- [ ] Main app and App Clip read from APIConfig (Info.plist)
 
 ### URL Scheme & Deep Links
 - [ ] Fix URL scheme mismatch: either add `queueit` as second scheme, or update `parseJoinCode` to accept `com.queueit.app`
@@ -41,9 +40,9 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Log retry attempts
 
 ### Configuration
-- [ ] Create shared `Environment` enum (dev/staging/prod)
-- [ ] Use build configuration to select environment
-- [ ] Ensure both main app and App Clip use same config source
+- [ ] APIConfig reads from `Bundle.main.infoDictionary` (BackendURL, SupabaseURL, SupabaseAnonKey)
+- [ ] Build configuration (Debug/Release) selects Config-Debug or Config-Release
+- [ ] Both main app and App Clip use same config source
 - [ ] Update all preview mocks to use mock services instead of localhost
 
 ### Universal Links
@@ -52,7 +51,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Test Universal Link flow (`https://queueit.app/join?code=X`)
 
 ### Force Unwraps & Crash Risks
-- [ ] Replace force unwrap in `QueueITApp.swift` backend URL
+- [ ] Backend URL: use APIConfig (fail-fast on invalid config; satisfies force-unwrap concern)
 - [ ] Replace `randomElement()!` in `AppClipGuestName.swift` with safe fallback
 - [ ] Replace `URLComponents(...)!` in `QueueAPIService.swift` with safe unwrapping
 - [ ] Audit remaining `!` and `fatalError` across codebase
@@ -72,8 +71,8 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Select app category (Music or Social Networking)
 
 ### Token Storage
-- [ ] Implement Keychain-based `AuthStorage` for Supabase
-- [ ] Replace UserDefaults storage with Keychain
+- [ ] AuthService uses `KeychainLocalStorage()` (Supabase SDK; encrypted at rest)
+- [ ] Never use UserDefaults for JWTs (plain-text; use Keychain)
 - [ ] Test token persistence after app restart
 
 ### App Icons
@@ -134,12 +133,20 @@ Before submitting to TestFlight:
 
 | Item | File(s) |
 |------|---------|
-| Backend URL | `QueueITApp.swift`, `QueueITClipApp.swift` |
+| Supabase keys / Backend URL | `Config-Release.xcconfig`, `Config-Debug.xcconfig`, `Info.plist`, `APIConfig.swift` |
+| Auth token storage | `AuthService.swift` (KeychainLocalStorage in SupabaseClientOptions) |
 | Invite URL | `InviteView.swift` |
-| Supabase keys | `QueueITApp.swift`, `QueueITClipApp.swift` |
 | URL scheme | `Info.plist`, `parseJoinCode` in `QueueITApp.swift`, `QueueITClipApp.swift` |
 | Apple Music retry | `song_matching_service.py`, `apple_music_service.py` |
 | RLS policies | `supabase/rls_policies.sql`, `supabase/migrations/` |
+
+### Where to put what
+
+| Data | Storage | Security |
+|------|---------|----------|
+| Backend URL | .xcconfig → Info.plist | Low (easy to swap) |
+| Supabase Anon Key | .xcconfig → Info.plist | Medium |
+| User JWT / Session | Keychain (via KeychainLocalStorage) | High |
 
 ---
 
