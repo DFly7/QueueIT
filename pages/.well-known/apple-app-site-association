@@ -1,0 +1,15 @@
+{
+  "appclips": {
+    "apps": ["V8S6S975CD.DF.QueueIT12.Clip"]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["V8S6S975CD.DF.QueueIT12"],
+        "components": [
+          { "/": "/join*", "comment": "Join session links" }
+        ]
+      }
+    ]
+  }
+}

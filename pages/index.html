@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QueueIT — The Party Queue App</title>
+  <meta name="description" content="Everyone adds songs. The crowd decides what plays next. No install required for guests." />
+
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --cyan: #00e5ff;
+      --purple: #8b5cf6;
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.5);
+      --card: rgba(255, 255, 255, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      gap: 0;
+    }
+
+    .glow-top {
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%);
+      position: fixed;
+      top: -160px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .glow-bottom {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%);
+      position: fixed;
+      bottom: -100px;
+      right: -60px;
+      pointer-events: none;
+    }
+
+    header {
+      margin-bottom: 56px;
+    }
+
+    .wordmark {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      margin-top: 16px;
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 360px;
+      line-height: 1.6;
+    }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 48px;
+    }
+
+    .feature {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      text-align: left;
+    }
+
+    .feature-icon { font-size: 28px; flex-shrink: 0; }
+
+    .feature-text strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .feature-text span {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border-radius: 14px;
+      padding: 16px 28px;
+      text-decoration: none;
+      color: #000;
+      font-size: 16px;
+      font-weight: 700;
+      transition: opacity 0.2s;
+    }
+
+    .cta:hover { opacity: 0.88; }
+
+    footer {
+      margin-top: 48px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="glow-top"></div>
+  <div class="glow-bottom"></div>
+
+  <header>
+    <div class="wordmark">QueueIT</div>
+    <p class="tagline">
+      Everyone adds songs. The crowd decides what plays next.
+    </p>
+  </header>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">📲</div>
+      <div class="feature-text">
+        <strong>No install needed for guests</strong>
+        <span>Scan the QR code and you're in instantly via App Clip.</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🎵</div>
+      <div class="feature-text">
+        <strong>Add any song</strong>
+        <span>Search Spotify's full catalogue from your phone.</span>
+      </div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🗳️</div>
+      <div class="feature-text">
+        <strong>Vote on what plays next</strong>
+        <span>The queue is shaped by the whole room, not just the host.</span>
+      </div>
+    </div>
+  </div>
+
+  <a class="cta" href="https://apps.apple.com/app/queueit/id000000000">
+    Download on the App Store
+  </a>
+
+  <footer>
+    <p>&copy; 2026 QueueIT &nbsp;·&nbsp; <a href="mailto:support@queueitapp.com">Support</a></p>
+  </footer>
+</body>
+</html>

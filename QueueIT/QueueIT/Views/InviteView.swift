@@ -14,12 +14,8 @@ struct InviteView: View {
     @State private var appeared = false
     @State private var codeCopied = false
 
-    // Prefer a registered Universal Link; fall back to the default App Clip link
-    // while the domain / AASA is not yet live.
     private var joinURL: String {
-        "https://appclip.apple.com/id?p=com.yourcompany.queueit.Clip&code=\(joinCode)"
-        // Once you have a domain, swap to:
-        // "https://queueit.app/join?code=\(joinCode)"
+        "https://queueitapp.com/join?code=\(joinCode)"
     }
 
     var body: some View {

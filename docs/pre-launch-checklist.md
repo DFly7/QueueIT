@@ -14,7 +14,7 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### Invite / App Clip
 
-- [ ] Fix InviteView share link: change `com.yourcompany.queueit.Clip` to `DF.QueueIT12.Clip` (or actual App Clip bundle ID)
+- [x] Fix InviteView share link: updated to `https://queueitapp.com/join?code=<join_code>` (Universal Link)
 - [ ] Verify QR codes and share links open the App Clip correctly
 
 ### Security
@@ -53,14 +53,14 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 
 ### Universal Links
 
-- [ ] Add Associated Domains capability: `applinks:queueit.app`, `appclips:queueit.app`
-- [ ] Host `apple-app-site-association` file on your domain
-- [ ] Test Universal Link flow (`https://queueit.app/join?code=X`)
+- [x] Add Associated Domains capability: `applinks:queueitapp.com` (main app), `appclips:queueitapp.com` (App Clip)
+- [x] Host `apple-app-site-association` file on your domain (GitHub Pages at `pages/`)
+- [ ] Test Universal Link flow (`https://queueitapp.com/join?code=X`)
 
 ### Force Unwraps & Crash Risks
 
 - [x] Backend URL: use APIConfig (fail-fast on invalid config; satisfies force-unwrap concern)
-- [ ] Replace `randomElement()!` in `AppClipGuestName.swift` with safe fallback
+- [x] Replace `randomElement()!` in `AppClipGuestName.swift` with safe fallback
 - [ ] Replace `URLComponents(...)!` in `QueueAPIService.swift` with safe unwrapping
 - [ ] Audit remaining `!` and `fatalError` across codebase
 - [ ] Add proper error handling for edge cases
