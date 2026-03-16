@@ -12,6 +12,27 @@ Pitfalls to fix before moving to TestFlight and App Store. Tick off as you go.
 - [ ] Set production backend URL in `Config-Release.xcconfig`
 - [x] Both main app and App Clip read from APIConfig (xcconfig → Info.plist)
 
+### Railway Deployment — Apple Music Private Key
+
+The `.p8` key cannot be committed to git or baked into a Docker image. Use the base64 pattern:
+
+1. **Encode the key locally:**
+   ```bash
+   base64 -i QueueITbackend/certs/AuthKey_4H44D28726.p8 | pbcopy
+   ```
+2. **Add Railway variables** (Service → Variables):
+   | Variable | Value |
+   |---|---|
+   | `APPLE_PRIVATE_KEY_BASE64` | *(paste from clipboard)* |
+   | `APPLE_TEAM_ID` | `<your-team-id>` |
+   | `APPLE_KEY_ID` | `<your-key-id>` |
+   | `APPLE_MEDIA_ID` | `<your-media-id>` |
+3. **Do NOT set `APPLE_PRIVATE_KEY_PATH`** in Railway — the base64 var takes priority automatically.
+4. **To rotate the key:** update only the `APPLE_PRIVATE_KEY_BASE64` variable and redeploy. No code changes needed.
+
+- [ ] `APPLE_PRIVATE_KEY_BASE64` set in Railway variables
+- [ ] `certs/` confirmed in `.gitignore` (already done)
+
 ### Invite / App Clip
 
 - [x] Fix InviteView share link: updated to `https://queueitapp.com/join?code=<join_code>` (Universal Link)

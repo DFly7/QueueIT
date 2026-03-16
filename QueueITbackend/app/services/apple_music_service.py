@@ -5,6 +5,7 @@ Handles Apple Music Developer Token generation and API calls.
 Uses private key to generate JWT for server-to-server authentication.
 """
 
+import base64
 import time
 import jwt
 import httpx
@@ -78,28 +79,38 @@ class AppleMusicService:
         self._token_expires_at: float = 0
         
     def _load_private_key(self) -> str:
-        """Load Apple Music private key from file"""
+        """Load Apple Music private key.
+
+        Prefers APPLE_PRIVATE_KEY_BASE64 (base64-encoded .p8 content stored as an
+        env var — the safe pattern for cloud deployments like Railway where binary
+        files cannot be committed to the repo).  Falls back to APPLE_PRIVATE_KEY_PATH
+        for local development where the file lives in certs/.
+        """
+        if self.settings.apple_private_key_base64:
+            logger.debug("Loading Apple Music private key from APPLE_PRIVATE_KEY_BASE64")
+            return base64.b64decode(self.settings.apple_private_key_base64).decode("utf-8")
+
         if not self.settings.apple_private_key_path:
-            raise ValueError("APPLE_PRIVATE_KEY_PATH not configured")
-            
+            raise ValueError(
+                "Apple Music private key not configured. "
+                "Set APPLE_PRIVATE_KEY_BASE64 (production) or APPLE_PRIVATE_KEY_PATH (local dev)."
+            )
+
         key_path = Path(self.settings.apple_private_key_path)
         if not key_path.is_absolute():
-            # Relative to backend root
             key_path = Path(__file__).parent.parent.parent / key_path
-            
+
         if not key_path.exists():
             raise FileNotFoundError(f"Apple Music private key not found: {key_path}")
-            
-        with open(key_path, 'r') as f:
+
+        logger.debug("Loading Apple Music private key from file", extra={"path": str(key_path)})
+        with open(key_path, "r") as f:
             return f.read()
-    
+
     def _generate_token(self) -> str:
         """Generate Apple Music Developer Token (JWT)"""
-        if not all([
-            self.settings.apple_team_id,
-            self.settings.apple_key_id,
-            self.settings.apple_private_key_path
-        ]):
+        has_key = self.settings.apple_private_key_base64 or self.settings.apple_private_key_path
+        if not all([self.settings.apple_team_id, self.settings.apple_key_id, has_key]):
             raise ValueError("Apple Music credentials not fully configured")
         
         private_key = self._load_private_key()

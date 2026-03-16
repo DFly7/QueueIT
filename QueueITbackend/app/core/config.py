@@ -36,6 +36,9 @@ class Settings(BaseModel):
     # Apple Music API configuration
     apple_team_id: str | None = os.getenv("APPLE_TEAM_ID")
     apple_key_id: str | None = os.getenv("APPLE_KEY_ID")
+    # Production (Railway): base64-encoded .p8 key stored as env var
+    # Local dev: path to .p8 file (falls back to this if base64 not set)
+    apple_private_key_base64: str | None = os.getenv("APPLE_PRIVATE_KEY_BASE64")
     apple_private_key_path: str | None = os.getenv("APPLE_PRIVATE_KEY_PATH")
     apple_media_id: str | None = os.getenv("APPLE_MEDIA_ID")
 
