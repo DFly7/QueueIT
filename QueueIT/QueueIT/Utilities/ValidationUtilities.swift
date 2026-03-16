@@ -32,7 +32,7 @@ enum ValidationError: LocalizedError {
         case .joinCodeTooLong:
             return "Join code cannot exceed 20 characters"
         case .joinCodeInvalidCharacters:
-            return "Join code can only contain letters and numbers"
+            return "Join code can only contain letters, numbers, and hyphens"
         case .joinCodeEmpty:
             return "Join code is required"
         }
@@ -75,7 +75,7 @@ struct Validator {
     /// Validates a join code according to backend rules
     /// - Min: 4 characters
     /// - Max: 20 characters
-    /// - Allowed: letters and numbers only
+    /// - Allowed: letters, numbers, hyphens (-)
     /// - Parameter joinCode: The join code to validate
     /// - Returns: ValidationError if invalid, nil if valid
     static func validateJoinCode(_ joinCode: String) -> ValidationError? {
@@ -93,10 +93,11 @@ struct Validator {
             return .joinCodeTooLong
         }
         
-        // Check for valid characters: alphanumeric only
-        let usernameCharacterSet = CharacterSet(charactersIn: trimmed)
+        // Check for valid characters: alphanumeric + hyphen
+        let allowedCharacterSet = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+        let joinCodeCharacterSet = CharacterSet(charactersIn: trimmed)
         
-        if !CharacterSet.alphanumerics.isSuperset(of: usernameCharacterSet) {
+        if !allowedCharacterSet.isSuperset(of: joinCodeCharacterSet) {
             return .joinCodeInvalidCharacters
         }
         

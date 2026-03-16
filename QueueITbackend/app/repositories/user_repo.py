@@ -58,7 +58,6 @@ class UserRepository:
         return response.data[0]
 
     def set_current_session(self, *, user_id: str, session_id: Optional[str]) -> Dict[str, Any]:
-        print(f"--- SETTING CURRENT SESSION FOR USER {user_id} TO {session_id} ---")
         response = (
             self.client
             .from_("users")

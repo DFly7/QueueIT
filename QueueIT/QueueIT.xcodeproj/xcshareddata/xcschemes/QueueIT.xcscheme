@@ -15,9 +15,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "90D2AFC72F657EC700582247"
-               BuildableName = "QueueITClip.app"
-               BlueprintName = "QueueITClip"
+               BlueprintIdentifier = "90CBEDA92E9BD7DE00CCCC72"
+               BuildableName = "QueueIT.app"
+               BlueprintName = "QueueIT"
                ReferencedContainer = "container:QueueIT.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -35,9 +35,9 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "90D2AFD72F657EC900582247"
-               BuildableName = "QueueITClipTests.xctest"
-               BlueprintName = "QueueITClipTests"
+               BlueprintIdentifier = "90CBEDB82E9BD7E000CCCC72"
+               BuildableName = "QueueITTests.xctest"
+               BlueprintName = "QueueITTests"
                ReferencedContainer = "container:QueueIT.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -46,9 +46,9 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "90D2AFE12F657EC900582247"
-               BuildableName = "QueueITClipUITests.xctest"
-               BlueprintName = "QueueITClipUITests"
+               BlueprintIdentifier = "90CBEDC22E9BD7E000CCCC72"
+               BuildableName = "QueueITUITests.xctest"
+               BlueprintName = "QueueITUITests"
                ReferencedContainer = "container:QueueIT.xcodeproj">
             </BuildableReference>
          </TestableReference>
@@ -56,7 +56,6 @@
    </TestAction>
    <LaunchAction
       buildConfiguration = "Release"
-      appClipInvocationURLString = "https://appclip.apple.com/id?p=DF.QueueIT12.Clip&amp;code=darraghhello"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -69,16 +68,15 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "90D2AFC72F657EC700582247"
-            BuildableName = "QueueITClip.app"
-            BlueprintName = "QueueITClip"
+            BlueprintIdentifier = "90CBEDA92E9BD7DE00CCCC72"
+            BuildableName = "QueueIT.app"
+            BlueprintName = "QueueIT"
             ReferencedContainer = "container:QueueIT.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
-      appClipInvocationURLString = "https://appclip.apple.com/id?p=DF.QueueIT12.Clip&amp;code=darraghhello"
       shouldUseLaunchSchemeArgsEnv = "YES"
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
@@ -87,9 +85,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "90D2AFC72F657EC700582247"
-            BuildableName = "QueueITClip.app"
-            BlueprintName = "QueueITClip"
+            BlueprintIdentifier = "90CBEDA92E9BD7DE00CCCC72"
+            BuildableName = "QueueIT.app"
+            BlueprintName = "QueueIT"
             ReferencedContainer = "container:QueueIT.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
