@@ -90,6 +90,10 @@ struct CurrentSessionResponse: Codable {
     var skipRequestCount: Int
     var participantCount: Int
     var userRequestedSkip: Bool
+    /// True when the last song advance was triggered by a crowdsourced skip vote.
+    /// False for natural song end or host skip. Used to show the full-bar animation
+    /// on all clients without a heuristic that breaks at 3+ players.
+    var lastSkipWasCrowdsourced: Bool
 
     init(
         session: SessionBase,
@@ -98,7 +102,8 @@ struct CurrentSessionResponse: Codable {
         myVotes: [UUID: Int] = [:],
         skipRequestCount: Int = 0,
         participantCount: Int = 1,
-        userRequestedSkip: Bool = false
+        userRequestedSkip: Bool = false,
+        lastSkipWasCrowdsourced: Bool = false
     ) {
         self.session = session
         self.currentSong = currentSong
@@ -107,6 +112,7 @@ struct CurrentSessionResponse: Codable {
         self.skipRequestCount = skipRequestCount
         self.participantCount = participantCount
         self.userRequestedSkip = userRequestedSkip
+        self.lastSkipWasCrowdsourced = lastSkipWasCrowdsourced
     }
     
     func withUpdatedVotes(for songId: UUID, votes: Int) -> CurrentSessionResponse {
@@ -136,6 +142,7 @@ struct CurrentSessionResponse: Codable {
         case skipRequestCount = "skip_request_count"
         case participantCount = "participant_count"
         case userRequestedSkip = "user_requested_skip"
+        case lastSkipWasCrowdsourced = "last_skip_was_crowdsourced"
     }
 
     init(from decoder: Decoder) throws {
@@ -152,6 +159,7 @@ struct CurrentSessionResponse: Codable {
         skipRequestCount = try container.decodeIfPresent(Int.self, forKey: .skipRequestCount) ?? 0
         participantCount = try container.decodeIfPresent(Int.self, forKey: .participantCount) ?? 1
         userRequestedSkip = try container.decodeIfPresent(Bool.self, forKey: .userRequestedSkip) ?? false
+        lastSkipWasCrowdsourced = try container.decodeIfPresent(Bool.self, forKey: .lastSkipWasCrowdsourced) ?? false
     }
 }
 

@@ -115,6 +115,7 @@ def get_current_session_for_user(auth: AuthenticatedClient) -> CurrentSessionRes
         skip_request_count=skip_request_count,
         participant_count=participant_count,
         user_requested_skip=user_requested_skip,
+        last_skip_was_crowdsourced=session_row.get("last_skip_was_crowdsourced", False),
     )
 
 
@@ -170,6 +171,7 @@ def create_session_for_user(auth: AuthenticatedClient, request: SessionCreateReq
         skip_request_count=0,
         participant_count=participant_count,
         user_requested_skip=False,
+        last_skip_was_crowdsourced=False,
     )
 
 
@@ -226,6 +228,7 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
         skip_request_count=skip_request_count,
         participant_count=participant_count,
         user_requested_skip=user_requested_skip,
+        last_skip_was_crowdsourced=session_row.get("last_skip_was_crowdsourced", False),
     )
 
 

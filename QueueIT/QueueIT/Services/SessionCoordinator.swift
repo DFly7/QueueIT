@@ -207,17 +207,13 @@ class SessionCoordinator: ObservableObject {
         do {
             let newSession = try await apiService.getCurrentSession()
 
-            // If the song changed and skip requests were at or past the 50% threshold,
-            // this refresh is delivering a crowdsourced skip to users who didn't tap
-            // the button. Show the full bar briefly before switching songs.
-            // Using >= 50% (not just > 0) avoids false-positives when a song ends
-            // naturally while a small number of unrelated skip requests were pending.
+            // If the backend flagged the last advance as a crowdsourced skip, show the
+            // full bar briefly on all devices before switching songs. The flag is set
+            // by the crowdsourced_skip_advance RPC and cleared by every other advance
+            // path (host skip, natural song end), so no heuristic is needed.
             let songChanged = currentSession?.currentSong?.id != newSession.currentSong?.id
-            let prevSkipCount = currentSession?.skipRequestCount ?? 0
-            let prevParticipantCount = max(currentSession?.participantCount ?? 1, 1)
-            let skipWasAtThreshold = Double(prevSkipCount) >= Double(prevParticipantCount) / 2.0
 
-            if songChanged && skipWasAtThreshold {
+            if songChanged && newSession.lastSkipWasCrowdsourced {
                 if var displaySession = currentSession {
                     displaySession.skipRequestCount = displaySession.participantCount
                     displaySession.userRequestedSkip = true

@@ -78,7 +78,10 @@ class SessionRepository:
         response = (
             self.client
             .from_("sessions")
-            .update({"current_song": queued_song_id}, returning="representation")
+            .update(
+                {"current_song": queued_song_id, "last_skip_was_crowdsourced": False},
+                returning="representation",
+            )
             .eq("id", session_id)
             .execute()
         )

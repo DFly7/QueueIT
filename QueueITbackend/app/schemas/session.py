@@ -122,6 +122,7 @@ class CurrentSessionResponse(BaseModel):
     skip_request_count: int = 0
     participant_count: int = 1
     user_requested_skip: bool = False
+    last_skip_was_crowdsourced: bool = False
 
 
 class SkipRequestResponse(BaseModel):
