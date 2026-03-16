@@ -69,4 +69,11 @@ class UserRepository:
             raise ValueError("Failed to set current_session for user")
         return response.data[0]
 
+    def leave_session(self, *, user_id: str, session_id: str) -> None:
+        """Clear current session and record it as previous_session_id atomically."""
+        self.client.from_("users") \
+            .update({"current_session": None, "previous_session_id": session_id}) \
+            .eq("id", user_id) \
+            .execute()
+
 

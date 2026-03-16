@@ -185,8 +185,9 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
     if not session_row:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Set user's current_session
+    # Set user's current_session then signal presence change to realtime subscribers
     user_repo.set_current_session(user_id=user_id, session_id=session_row["id"])
+    session_repo.touch_session(session_row["id"])
 
     host_row = user_repo.get_by_id(session_row["host_id"])
     if not host_row:
@@ -231,8 +232,14 @@ def join_session_by_code(auth: AuthenticatedClient, request: SessionJoinRequest)
 def leave_current_session_for_user(auth: AuthenticatedClient) -> Dict[str, Any]:
     client = auth.client
     user_id = auth.payload["sub"]
+    session_repo = SessionRepository(client)
     user_repo = UserRepository(client)
-    user_repo.set_current_session(user_id=user_id, session_id=None)
+    session_row = session_repo.get_current_for_user(user_id)
+    if session_row:
+        user_repo.leave_session(user_id=user_id, session_id=session_row["id"])
+        session_repo.touch_session(session_row["id"])
+    else:
+        user_repo.set_current_session(user_id=user_id, session_id=None)
     return {"ok": True}
 
 

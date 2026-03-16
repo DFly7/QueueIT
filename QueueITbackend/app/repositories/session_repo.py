@@ -108,6 +108,12 @@ class SessionRepository:
         )
         return bool(response.data)
 
+    def touch_session(self, session_id: str) -> None:
+        """Bump last_presence_change to signal a participant count change to realtime subscribers.
+        Uses a SECURITY DEFINER RPC so any session member (not just the host) can trigger the
+        CDC event — direct UPDATE on sessions is blocked by sessions_update_host RLS for guests."""
+        self.client.rpc("touch_session_presence", {"p_session_id": session_id}).execute()
+
     # --- Helpers ---
     def get_current_for_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """
