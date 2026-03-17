@@ -21,6 +21,9 @@ class SessionCoordinator: ObservableObject {
     }
     @Published var isLoading: Bool = false
     @Published var error: String?
+    /// Set to true when the host deletes their account (or ends the session) while the current
+    /// user is a guest. WelcomeView observes this to show a "host ended session" toast.
+    @Published var hostEndedSession: Bool = false
     
     // Optimistic UI state
     @Published var userVotes: [UUID: Int] = [:]  // queuedSongId -> user's vote (1, -1, or 0) - for button highlighting
@@ -203,10 +206,31 @@ class SessionCoordinator: ObservableObject {
             populateUserVotes(from: newSession)
             error = nil
         } catch {
-            self.error = error.localizedDescription
+            if case APIError.serverError(let statusCode, _) = error, statusCode == 404 {
+                handleSessionVanished()
+            } else {
+                self.error = error.localizedDescription
+            }
         }
     }
-    
+
+    private func handleSessionVanished() {
+        disconnectRealtime()
+        #if !APPCLIP
+        MusicManager.shared.stop()
+        #endif
+        currentSession = nil
+        userVotes = [:]
+        displayedVoteCounts = [:]
+        optimisticTierMetadata = [:]
+        pendingVoteValues = [:]
+        votesInFlight = []
+        pendingSongs = []
+        optimisticSkip = false
+        error = nil
+        hostEndedSession = true
+    }
+
     private func populateUserVotes(from session: CurrentSessionResponse) {
         // Build the set of song IDs still present in the session so stale entries can
         // be pruned. Always union with votesInFlight so an in-flight vote is never removed

@@ -13,6 +13,7 @@ struct SessionView: View {
     @State private var showingSearch = false
     @State private var showingHostControls = false
     @State private var showingInvite = false
+    @State private var showingAccount = false
     @State private var appeared = false
     @Namespace private var queueNamespace
     
@@ -122,6 +123,12 @@ struct SessionView: View {
                                 }
                             }
                         }
+
+                        Button(action: { showingAccount = true }) {
+                            Image(systemName: "person.circle")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
                     }
                 }
             }
@@ -141,6 +148,10 @@ struct SessionView: View {
                 if let joinCode = sessionCoordinator.currentSession?.session.joinCode {
                     InviteView(joinCode: joinCode)
                 }
+            }
+            .sheet(isPresented: $showingAccount) {
+                AccountSheet()
+                    .environmentObject(authService)
             }
         }
         .onAppear {

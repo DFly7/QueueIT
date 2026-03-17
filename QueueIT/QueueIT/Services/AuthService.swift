@@ -178,6 +178,55 @@ class AuthService: ObservableObject {
         }
     }
 
+    // MARK: - Account Deletion
+
+    func deleteAccount() async throws {
+        guard let token = accessToken else {
+            throw NSError(
+                domain: "AuthService",
+                code: 401,
+                userInfo: [NSLocalizedDescriptionKey: "Not authenticated"]
+            )
+        }
+
+        let url = APIConfig.backendURL.appendingPathComponent("/api/v1/users/me")
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "AuthService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Invalid server response"]
+            )
+        }
+
+        switch http.statusCode {
+        case 204:
+            // Account deleted — clear local session immediately to prevent ghost-token calls
+            signOut()
+        case 401:
+            // Token invalid; clear anyway
+            signOut()
+        default:
+            let message: String
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let detail = json["detail"] as? String {
+                message = detail
+            } else {
+                message = "Failed to delete account (HTTP \(http.statusCode))"
+            }
+            throw NSError(
+                domain: "AuthService",
+                code: http.statusCode,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+    }
+
     // MARK: - Actions
 
     func signIn(email: String, password: String) async {

@@ -112,6 +112,15 @@ The `.p8` key cannot be committed to git or baked into a Docker image. Use the b
 - [ ] Add App Clip icon if needed
 - [ ] Verify no placeholder or missing icons
 
+### In-App Account Deletion (App Store Guideline 5.1.1(v))
+
+- [ ] In-app account deletion accessible from WelcomeView (Account button) and SessionView (person icon)
+- [ ] Backend `DELETE /api/v1/users/me` implemented and deployed
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` configured in Railway production variables
+- [ ] `delete_user_data` RPC migration applied to production Supabase
+- [ ] Verify full data cleanup: `public.users`, `votes`, `queued_songs`, `sessions`, `skip_requests`, `auth.users`
+- [ ] Test host deletion: guest is popped to WelcomeView with toast "The host has ended this session."
+
 ### Database
 
 - [ ] Confirm `sessions` table has appropriate RLS policy for INSERT (if needed)

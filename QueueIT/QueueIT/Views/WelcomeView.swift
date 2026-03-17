@@ -12,12 +12,43 @@ struct WelcomeView: View {
     @EnvironmentObject var sessionCoordinator: SessionCoordinator
     @State private var showingCreateSession = false
     @State private var showingJoinSession = false
+    @State private var showingAccount = false
     @State private var appeared = false
+    @State private var toastMessage: String?
+    @State private var toastTask: Task<Void, Never>?
     
     var body: some View {
         ZStack {
             NeonBackground()
-            
+
+            // Host-ended-session toast
+            if let message = toastMessage {
+                VStack {
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundColor(AppTheme.neonCyan)
+                        Text(message)
+                            .font(AppTheme.body())
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                            .fill(Color.black.opacity(0.75))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                                    .stroke(AppTheme.neonCyan.opacity(0.4), lineWidth: 1)
+                            )
+                    )
+                    .padding(.horizontal, AppTheme.spacingXl)
+                    .padding(.top, 16)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .zIndex(1)
+            }
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                     Spacer(minLength: 60)
@@ -122,8 +153,8 @@ struct WelcomeView: View {
                             Text(user.username ?? "User")
                                 .font(AppTheme.headline())
                                 .foregroundColor(.white.opacity(0.9))
-                            Button("Sign Out") {
-                                authService.signOut()
+                            Button("Account") {
+                                showingAccount = true
                             }
                             .font(AppTheme.caption())
                             .foregroundColor(AppTheme.neonCyan)
@@ -142,6 +173,10 @@ struct WelcomeView: View {
             JoinSessionView()
                 .environmentObject(sessionCoordinator)
         }
+        .sheet(isPresented: $showingAccount) {
+            AccountSheet()
+                .environmentObject(authService)
+        }
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                 appeared = true
@@ -154,6 +189,26 @@ struct WelcomeView: View {
         .onChange(of: sessionCoordinator.pendingJoinCode) { _, code in
             if code != nil {
                 showingJoinSession = true
+            }
+        }
+        .onChange(of: sessionCoordinator.hostEndedSession) { _, ended in
+            if ended {
+                sessionCoordinator.hostEndedSession = false
+                showToast("The host has ended this session.")
+            }
+        }
+    }
+
+    private func showToast(_ message: String) {
+        toastTask?.cancel()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            toastMessage = message
+        }
+        toastTask = Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.3)) {
+                toastMessage = nil
             }
         }
     }

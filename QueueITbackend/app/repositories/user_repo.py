@@ -1,6 +1,26 @@
 from typing import Optional, Dict, Any
 
-from supabase import Client
+from supabase import Client, create_client
+
+
+def delete_account(user_id: str) -> None:
+    """
+    Atomically delete all public data for a user then remove their auth record.
+    Uses the service-role key to bypass RLS. Must only be called server-side.
+    """
+    from app.core.config import get_settings
+    settings = get_settings()
+
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        raise ValueError("Admin Supabase credentials not configured")
+
+    admin_client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+
+    # Delete all public data atomically via SECURITY DEFINER function
+    admin_client.rpc("delete_user_data", {"p_user_id": user_id}).execute()
+
+    # Delete auth record (not covered by the DB function)
+    admin_client.auth.admin.delete_user(user_id)
 
 
 class UserRepository:

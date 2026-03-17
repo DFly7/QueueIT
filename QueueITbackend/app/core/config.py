@@ -48,6 +48,7 @@ class Settings(BaseModel):
 
     supabase_url: str | None = os.getenv("SUPABASE_URL")
     supabase_public_anon_key: str | None = os.getenv("SUPABASE_PUBLIC_ANON_KEY")
+    supabase_service_role_key: str | None = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
     allowed_origins: List[str] = Field(
         default_factory=lambda: [o for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o]

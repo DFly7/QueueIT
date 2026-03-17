@@ -6,7 +6,8 @@ Handles user profile management (username, music provider, storefront).
 
 from fastapi import APIRouter, Depends, HTTPException
 from app.core.auth import get_authenticated_client, AuthenticatedClient
-from app.repositories.user_repo import UserRepository
+from app.core.config import get_settings
+from app.repositories.user_repo import UserRepository, delete_account
 from app.schemas.user import User, UserProfileUpdate
 from app.logging_config import get_logger
 
@@ -118,3 +119,23 @@ async def update_current_user_profile(
             raise HTTPException(status_code=400, detail="Username already taken")
         
         raise HTTPException(status_code=500, detail="Failed to update profile")
+
+
+@router.delete("/me", status_code=204)
+async def delete_current_user_account(
+    auth: AuthenticatedClient = Depends(get_authenticated_client)
+) -> None:
+    user_id = auth.payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
+
+    settings = get_settings()
+    if not settings.supabase_service_role_key:
+        raise HTTPException(status_code=503, detail="Account deletion is not available at this time")
+
+    try:
+        delete_account(user_id)
+        logger.info("Deleted user account", extra={"user_id": user_id})
+    except Exception as e:
+        logger.error("Failed to delete account", extra={"user_id": user_id, "error": str(e)})
+        raise HTTPException(status_code=500, detail="Failed to delete account")
