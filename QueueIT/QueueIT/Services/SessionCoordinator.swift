@@ -65,54 +65,30 @@ class SessionCoordinator: ObservableObject {
         // Only show songs that are "queued" (not played or skipped)
         var filtered = q.filter { $0.id != currentId && $0.status == "queued" }
 
-        // Step 1: Sort everything using server-authoritative tier data.
-        // Within each vote tier:
-        //   - Losers (enteredTierByGain == false) first, newest first
-        //   - Gainers (enteredTierByGain == true) after, newest last
-        //   - Tie-breaker: addedAt ascending
+        // Sort using the full asymmetric tier key, substituting optimistic tier metadata
+        // when a vote is in-flight. This avoids the two-step approach (sort + post-sort
+        // edge-insertion) which produced a snap: edge-insertion ignored the full sort key
+        // (lastEnteredTierAt, addedAt), so the song landed in the wrong position optimistically
+        // and then snapped to the correct server position when optimisticTierMetadata cleared.
+        //
+        // Using optimistic metadata directly in the comparator yields a total order that
+        // matches the server key (votes, byGain, timestamp, addedAt), so the transition
+        // to server data on session refresh is position-stable.
+        let optimistic = optimisticTierMetadata
+        func effectiveTier(for song: QueuedSongResponse) -> (byGain: Bool, at: Date) {
+            if let meta = optimistic[song.id] { return (meta.byGain, meta.at) }
+            return (song.enteredTierByGain, song.lastEnteredTierAt ?? song.addedAt)
+        }
+
         filtered.sort { s1, s2 in
             let v1 = displayedVoteCounts[s1.id] ?? s1.votes
             let v2 = displayedVoteCounts[s2.id] ?? s2.votes
             if v1 != v2 { return v1 > v2 }
-            if s1.enteredTierByGain != s2.enteredTierByGain { return !s1.enteredTierByGain }
-            let t1 = s1.lastEnteredTierAt ?? s1.addedAt
-            let t2 = s2.lastEnteredTierAt ?? s2.addedAt
-            if t1 != t2 { return s1.enteredTierByGain ? t1 < t2 : t1 > t2 }
+            let (byGain1, t1) = effectiveTier(for: s1)
+            let (byGain2, t2) = effectiveTier(for: s2)
+            if byGain1 != byGain2 { return !byGain1 }
+            if t1 != t2 { return byGain1 ? t1 < t2 : t1 > t2 }
             return s1.addedAt < s2.addedAt
-        }
-
-        // Step 2: For any song with optimistic tier metadata, pull it out of its
-        // sorted position and drop it at the top or bottom of its target tier group.
-        // We iterate optimisticTierMetadata (not votesInFlight) because the metadata
-        // persists until the session refresh arrives — votesInFlight is cleared as
-        // soon as the POST /vote returns, which is before GET /sessions/current lands.
-        for (songId, meta) in optimisticTierMetadata {
-            guard let fromIdx = filtered.firstIndex(where: { $0.id == songId }) else { continue }
-
-            let song = filtered.remove(at: fromIdx)
-            let targetVotes = displayedVoteCounts[songId] ?? song.votes
-
-            let insertAt: Int
-            if meta.byGain {
-                // Gained a vote → bottom of its tier group
-                insertAt = filtered.lastIndex(where: {
-                    (displayedVoteCounts[$0.id] ?? $0.votes) == targetVotes
-                }).map { $0 + 1 }
-                ?? filtered.firstIndex(where: {
-                    (displayedVoteCounts[$0.id] ?? $0.votes) < targetVotes
-                })
-                ?? filtered.endIndex
-            } else {
-                // Lost a vote → top of its tier group
-                insertAt = filtered.firstIndex(where: {
-                    (displayedVoteCounts[$0.id] ?? $0.votes) == targetVotes
-                })
-                ?? filtered.firstIndex(where: {
-                    (displayedVoteCounts[$0.id] ?? $0.votes) < targetVotes
-                })
-                ?? filtered.endIndex
-            }
-            filtered.insert(song, at: insertAt)
         }
 
         // Pending songs (being added) always go at the end
