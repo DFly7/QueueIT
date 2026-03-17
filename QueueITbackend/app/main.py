@@ -1,9 +1,13 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.auth import verify_jwt
+from app.core.rate_limit import limiter
 
 # Logging and middleware
 from app.logging_config import setup_logging, get_logger
@@ -39,15 +43,19 @@ app = FastAPI(
     swagger_ui_parameters={"persistAuthorization": True},  # Keeps JWT after refresh
 )
 
+# Attach limiter to app state (required by SlowAPIMiddleware)
+app.state.limiter = limiter
+
 # Register exception handlers for structured error logging
 register_exception_handlers(app)
 
 # Add logging middleware (order matters!)
-# Middleware executes in reverse order of registration:
-# 1. RequestIDMiddleware - generates/extracts request_id
-# 2. AuthContextMiddleware - extracts user details from JWT
-# 3. AccessLogMiddleware - logs with full context
+# Middleware executes in reverse order of registration (last added = first to run):
+# Request flow: RequestID → AuthContext → SlowAPI → AccessLog → route
+# This ordering ensures AuthContext populates request.state.user_id before
+# SlowAPI's key_func is called, enabling per-user rate limits.
 app.add_middleware(AccessLogMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(AuthContextMiddleware)
 app.add_middleware(RequestIDMiddleware)
 
@@ -64,6 +72,7 @@ app.add_middleware(
 
 
 @app.get("/healthz")
+@limiter.exempt
 def healthz() -> dict:
     return {"status": "ok"}
 

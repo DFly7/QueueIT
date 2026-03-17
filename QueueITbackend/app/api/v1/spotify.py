@@ -2,8 +2,9 @@ import requests
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from starlette.requests import Request
 
-# We'll need a wrapper schema for the search results list
+from app.core.rate_limit import limiter
 from app.schemas.track import TrackOut
 from app.services.spotify_service import search_spotify
 from pydantic import BaseModel
@@ -38,8 +39,10 @@ def parse_spotify_results(spotify_data: dict) -> SearchResults:
     return SearchResults(tracks=tracks)
 
 
-@router.get("/search", response_model=SearchResults) # <-- ADDED: response_model
+@router.get("/search", response_model=SearchResults)
+@limiter.limit("20/minute;5/second")
 def search(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query for a track"),
     limit: int = Query(10, ge=1, le=50, description="Number of results to return"),
 ):

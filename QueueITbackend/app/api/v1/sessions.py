@@ -12,7 +12,10 @@
 # Description: Used by the session host for administrative actions. The request body could specify actions like lock_queue: true, skip_current_track: true, or pause_playback: true. This endpoint centralizes all host controls.
 
 from fastapi import APIRouter, Depends, Body, HTTPException
+from starlette.requests import Request
+
 from app.core.auth import AuthenticatedClient, get_authenticated_client
+from app.core.rate_limit import limiter
 from app.schemas.session import (
     SessionJoinRequest,
     CurrentSessionResponse,
@@ -32,7 +35,9 @@ router = APIRouter()
 
 
 @router.post("/create", response_model=CurrentSessionResponse)
+@limiter.limit("10/minute;3/second")
 def create_session(
+    request: Request,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
     session_request: SessionCreateRequest = Body(...),
 ):
@@ -54,7 +59,9 @@ def create_session(
     # )
 
 @router.post("/join", response_model=CurrentSessionResponse)
+@limiter.limit("20/minute;5/second")
 def join_session(
+    request: Request,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
     join_request: SessionJoinRequest = Body(...),
 ):

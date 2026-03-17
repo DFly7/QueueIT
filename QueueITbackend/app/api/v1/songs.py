@@ -10,7 +10,10 @@
 
 # app/api/v1/songs.py
 from fastapi import APIRouter, Depends, HTTPException, Body
+from starlette.requests import Request
+
 from app.core.auth import AuthenticatedClient, get_authenticated_client
+from app.core.rate_limit import limiter
 from app.schemas.track import AddSongRequest
 from app.schemas.session import VoteRequest, QueuedSongResponse
 from app.services.queue_service import add_song_to_queue_for_user, vote_for_queued_song, remove_vote_from_queued_song
@@ -27,19 +30,23 @@ def get_my_songs():
 
 
 @router.post("/add", response_model=QueuedSongResponse)
+@limiter.limit("30/minute;5/second")
 async def add_song(
+    request: Request,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
-    request: AddSongRequest = Body(...),
+    body: AddSongRequest = Body(...),
 ):
-    return await add_song_to_queue_for_user(auth, request)
+    return await add_song_to_queue_for_user(auth, body)
 
 @router.post("/{queued_song_id}/vote")
+@limiter.limit("60/minute;5/second")
 def vote_for_song(
     queued_song_id: str,
+    request: Request,
     auth: AuthenticatedClient = Depends(get_authenticated_client),
-    request: VoteRequest = Body(...),
+    vote_request: VoteRequest = Body(...),
 ):
-    return vote_for_queued_song(auth, queued_song_id, request)
+    return vote_for_queued_song(auth, queued_song_id, vote_request)
 
 @router.delete("/{queued_song_id}/vote")
 def remove_vote(

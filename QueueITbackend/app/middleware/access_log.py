@@ -36,10 +36,11 @@ def get_client_ip(request: Request) -> Optional[str]:
     2. X-Real-IP header (nginx)
     3. request.client.host (direct connection)
     """
-    # Check X-Forwarded-For (may contain multiple IPs, take first)
+    # Check X-Forwarded-For; use rightmost entry (Railway's trusted real IP).
+    # Leftmost entries can be spoofed by clients; Railway appends the real IP.
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+        return forwarded_for.split(",")[-1].strip()
     
     # Check X-Real-IP
     real_ip = request.headers.get("X-Real-IP")

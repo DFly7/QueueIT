@@ -30,6 +30,10 @@ class Settings(BaseModel):
     # Prometheus metrics
     enable_metrics: bool = os.getenv("ENABLE_METRICS", "true").lower() == "true"
 
+    # Rate limiting
+    rate_limit_enabled: bool = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+    rate_limit_default: str = os.getenv("RATE_LIMIT_DEFAULT", "100/minute")
+
     spotify_client_id: str | None = os.getenv("SPOTIFY_CLIENT_ID")
     spotify_client_secret: str | None = os.getenv("SPOTIFY_CLIENT_SECRET")
 

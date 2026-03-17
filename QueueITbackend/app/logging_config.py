@@ -96,7 +96,11 @@ def setup_logging() -> None:
     # Silence noisy loggers
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
-    
+
+    # Prevent SlowAPI from printing rate limit messages to stdout.
+    # We handle rate limits in rate_limit_exceeded_handler and log via structlog.
+    logging.getLogger("slowapi").propagate = False
+
     # Silence HTTP client debug output (httpx, h2, hpack)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
