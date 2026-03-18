@@ -11,7 +11,7 @@ When a guest added the first song to an empty queue, the session never moved int
 The backend auto-play logic ran two sequential database writes after inserting the first song:
 
 1. `UPDATE sessions SET current_song = <id> WHERE current_song IS NULL` — to claim the now-playing slot
-2. `UPDATE queued_songs SET status = 'playing' WHERE id = <id>` — to mark the song as playing
+2. `UPDATE queued_songs SET status = 'playing' WHERE id = <id>` — to mark the song as playing.
 
 Both writes ran through a **user-authenticated Supabase client**, meaning Supabase enforced RLS with `auth.uid()` = the guest's user ID. The RLS policies for both tables restrict `UPDATE` to the **host only**:
 
