@@ -69,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9092069C2F6B62530069498B /* ci_post_clone.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ci_post_clone.sh; sourceTree = "<group>"; };
 		90CBEDAA2E9BD7DE00CCCC72 /* QueueIT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QueueIT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90CBEDB92E9BD7E000CCCC72 /* QueueITTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QueueITTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90CBEDC32E9BD7E000CCCC72 /* QueueITUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QueueITUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -206,9 +207,18 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		9092069B2F6B62450069498B /* ci_scripts */ = {
+			isa = PBXGroup;
+			children = (
+				9092069C2F6B62530069498B /* ci_post_clone.sh */,
+			);
+			path = ci_scripts;
+			sourceTree = "<group>";
+		};
 		90CBEDA12E9BD7DE00CCCC72 = {
 			isa = PBXGroup;
 			children = (
+				9092069B2F6B62450069498B /* ci_scripts */,
 				90CBEDAC2E9BD7DE00CCCC72 /* QueueIT */,
 				90CBEDBC2E9BD7E000CCCC72 /* QueueITTests */,
 				90CBEDC62E9BD7E000CCCC72 /* QueueITUITests */,
