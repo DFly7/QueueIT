@@ -9,8 +9,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- 1. Unlink user from current session
-  UPDATE users SET current_session = NULL WHERE id = p_user_id;
+  -- 1. Unlink ALL users from sessions hosted by this user, and unlink this user from any session
+  UPDATE users
+  SET current_session = NULL, previous_session_id = NULL
+  WHERE current_session IN (SELECT id FROM sessions WHERE host_id = p_user_id)
+     OR previous_session_id IN (SELECT id FROM sessions WHERE host_id = p_user_id)
+     OR id = p_user_id;
 
   -- 2. Clear current_song on sessions this user hosts (avoid FK violation when deleting queued_songs)
   UPDATE sessions SET current_song = NULL WHERE host_id = p_user_id;
