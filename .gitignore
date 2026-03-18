@@ -217,14 +217,18 @@ __marimo__/
 
 ## User-specific stuff
 *.DS_Store
-*.xcodeproj/project.xcworkspace
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xccheckout
-*.xcworkspace/
 xcuserdata/
 
-QueueIT.xcodeproj/project.xcworkspace/
+# Ignore xcworkspace contents but allow Package.resolved
+*.xcodeproj/project.xcworkspace/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/
+*.xcodeproj/project.xcworkspace/xcshareddata/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 ## Build generated
 build/
@@ -238,10 +242,6 @@ DerivedData/
 #
 # Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
 # Packages/
-#
-# Add this line if you want to avoid checking in resolved dependencies from Swift Package Manager.
-*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
-QueueIT.xcodeproj/project.xcworkspace/xcshareddata/
 
 #
 # We recommend against adding the above two lines to your .gitignore.
