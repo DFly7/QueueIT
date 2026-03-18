@@ -29,15 +29,15 @@ Supabase **silently rejects** an RLS-blocked `UPDATE` — it returns empty data 
 
 ### Silent Failure Chain
 
-| Step | Expected | Actual |
-|---|---|---|
-| Guest adds first song | Song inserted as `queued` | ✅ Succeeds (INSERT allowed by member RLS) |
-| `set_current_song_if_empty` | Returns `True`, sets `current_song` | ❌ RLS blocks UPDATE, returns `False` silently |
-| `update_song_status("playing")` | Marks song as `playing` | ❌ Never called (guarded by `was_set`) |
-| `sessions.current_song` | Set to new song's ID | ❌ Stays `NULL` |
-| iOS `refreshSession()` | Returns new current song | ❌ Returns `current_song: null` |
-| `handleSessionChange` on host | Triggers `playTrack` | ❌ Old and new `currentSong` both `nil`, no change detected |
-| Music playback | Starts | ❌ Never starts |
+| Step                            | Expected                            | Actual                                                      |
+| ------------------------------- | ----------------------------------- | ----------------------------------------------------------- |
+| Guest adds first song           | Song inserted as `queued`           | ✅ Succeeds (INSERT allowed by member RLS)                  |
+| `set_current_song_if_empty`     | Returns `True`, sets `current_song` | ❌ RLS blocks UPDATE, returns `False` silently              |
+| `update_song_status("playing")` | Marks song as `playing`             | ❌ Never called (guarded by `was_set`)                      |
+| `sessions.current_song`         | Set to new song's ID                | ❌ Stays `NULL`                                             |
+| iOS `refreshSession()`          | Returns new current song            | ❌ Returns `current_song: null`                             |
+| `handleSessionChange` on host   | Triggers `playTrack`                | ❌ Old and new `currentSong` both `nil`, no change detected |
+| Music playback                  | Starts                              | ❌ Never starts                                             |
 
 ---
 
@@ -91,8 +91,8 @@ Replaced the two-step `set_current_song_if_empty` + `update_song_status` calls w
 
 ## Files Changed
 
-| File | Change |
-|---|---|
-| `supabase/migrations/20260318_autoplay_first_song_rpc.sql` | New — `SECURITY DEFINER` RPC |
-| `QueueITbackend/app/repositories/session_repo.py` | Replaced `set_current_song_if_empty` with `autoplay_first_song` |
-| `QueueITbackend/app/services/queue_service.py` | Updated call site to use new repo method |
+| File                                                       | Change                                                          |
+| ---------------------------------------------------------- | --------------------------------------------------------------- |
+| `supabase/migrations/20260318_autoplay_first_song_rpc.sql` | New — `SECURITY DEFINER` RPC                                    |
+| `QueueITbackend/app/repositories/session_repo.py`          | Replaced `set_current_song_if_empty` with `autoplay_first_song` |
+| `QueueITbackend/app/services/queue_service.py`             | Updated call site to use new repo method                        |
